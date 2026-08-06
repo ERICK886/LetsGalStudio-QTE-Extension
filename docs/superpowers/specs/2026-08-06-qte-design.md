@@ -42,7 +42,7 @@
 
 跳转规则：
 
-- 若对应结果配置了 fragment → `ctx.flow.unsafe_goToFragment(fragmentId)`
+- 若对应结果配置了 fragment → `ctx.flow.callFragment(fragmentId)`（子片段结束后回到调用点继续）
 - 若未配置（空）→ 结束方法，剧本继续往下执行
 
 Perfect 额外效果：UI 金色闪烁反馈；逻辑上仍按 perfect 结果结算（可跳 perfect 片段）。

@@ -298,14 +298,14 @@ export async function runQteSession(
     };
 
     /**
-     * 结算会话：停止计时、隐藏 UI、resolve Promise、按需跳转片段。
+     * 结算会话：停止计时、隐藏 UI、按需 callFragment、再 resolve Promise。
      *
-     * 注意：Promise 的 resolve 必须在 unsafe_goToFragment 之前执行。
-     * 若宿主跳转抛出异常，也不能让 QTE 返回的 Promise 处于永久挂起状态，
-     * 否则调用方会软锁。跳转错误仅被吞掉，不影响会话结果。
+     * 使用 `callFragment`（而非 `unsafe_goToFragment`）：
+     * 子片段播完后会回到「开始 QTE」调用点之后继续主流程。
+     * 先 await 跳转再 resolve，保证 method.run 整段等待子片段结束。
      *
      * @param outcome - 判定结果
-     * @param jump - 是否按 outcome 跳转对应片段
+     * @param jump - 是否按 outcome 调用对应片段
      */
     session.finish = async (outcome: QteOutcome, jump: boolean) => {
       if (session.settled) {
@@ -355,19 +355,12 @@ export async function runQteSession(
         jump = false;
       }
 
-      // 必须先 resolve Promise，再尝试跳转片段；
-      // 这样即使 unsafe_goToFragment 抛出，调用方也不会被挂起。
-      if (!session.promiseSettled) {
-        session.promiseSettled = true;
-        session.resolve(outcome);
-      }
-
-      // 需要跳转时按 outcome 选择目标片段，并吞掉宿主跳转错误
+      // 先调用结果片段并等待其返回，再结束 QTE 方法，主剧本才能从调用点继续
       if (jump) {
         try {
           const { fragmentId, chapterId } = pickFragment(outcome, cfg);
           if (fragmentId) {
-            ctx.flow.unsafe_goToFragment(
+            await ctx.flow.callFragment(
               fragmentId,
               chapterId ? { chapterId } : undefined,
             );
@@ -375,6 +368,11 @@ export async function runQteSession(
         } catch {
           // 忽略宿主跳转错误，避免抛入未完成的 Promise 造成软锁
         }
+      }
+
+      if (!session.promiseSettled) {
+        session.promiseSettled = true;
+        session.resolve(outcome);
       }
 
       // 保留 abort 监听直至结算完成，闪光期间 abort 仍可禁止跳转
@@ -616,15 +614,19 @@ export async function skipQteSession(
   const outcome = outcomeFromSkip(cfg.skipCountsAsPass);
 
   if (active) {
-    // 走统一结算路径，包含 UI 隐藏与片段跳转
+    // 走统一结算路径，包含 UI 隐藏与片段调用（callFragment 会返回）
     await active.finish(outcome, true);
   } else {
     const { fragmentId, chapterId } = pickFragment(outcome, cfg);
     if (fragmentId) {
-      ctx.flow.unsafe_goToFragment(
-        fragmentId,
-        chapterId ? { chapterId } : undefined,
-      );
+      try {
+        await ctx.flow.callFragment(
+          fragmentId,
+          chapterId ? { chapterId } : undefined,
+        );
+      } catch {
+        // 忽略宿主跳转错误
+      }
     }
   }
 

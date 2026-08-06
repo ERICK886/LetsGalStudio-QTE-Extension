@@ -120,7 +120,7 @@ QTE 结束后会根据玩家输入自动跳转到对应片段：
 - **method()**：通过 `static xxx = method({...})` 暴露给「调用方法」Action。
 - **settings()**：项目级扩展设置，作者在 Studio 配置面板修改。
 - **ctx (ExtensionContext)**：运行时上下文，暴露 `ctx.ui.show/hide`、
-  `ctx.input.bindShortcut`、`ctx.flow.unsafe_goToFragment`、`ctx.settings` 等接口。
+  `ctx.input.bindShortcut`、`ctx.flow.callFragment`、`ctx.settings` 等接口。
 - **props**：从剧本的「显示界面」block 传入，通过 `this.data` 在 `render()` 里拿到。
 
 ## 测试
