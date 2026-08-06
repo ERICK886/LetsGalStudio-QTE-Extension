@@ -130,7 +130,9 @@ export const EditorShell: React.FC<EditorShellProps> = ({
             <Pane title="预览" bare>
               {center}
             </Pane>
-            <Pane title="属性">{right}</Pane>
+            <Pane title="属性" last>
+              {right}
+            </Pane>
           </>
         ) : (
           <div
@@ -217,11 +219,13 @@ const TabSwitcher: React.FC<TabSwitcherProps> = ({ tab, onTabChange }) => {
  *
  * @property title - 面板标题（小标题，渲染在面板顶部）
  * @property bare  - 是否去除内边距与标题（用于预览舞台等需铺满的内容）
+ * @property last  - 是否为最右栏（不渲染右侧分隔线）
  * @property children - 面板内容
  */
 interface PaneProps {
   title?: string;
   bare?: boolean;
+  last?: boolean;
   children: React.ReactNode;
 }
 
@@ -232,14 +236,20 @@ interface PaneProps {
  *
  * @returns 面板容器 React 节点
  */
-const Pane: React.FC<PaneProps> = ({ title, bare = false, children }) => {
+const Pane: React.FC<PaneProps> = ({
+  title,
+  bare = false,
+  last = false,
+  children,
+}) => {
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
-        borderRight: bare ? "none" : "1px solid rgba(255, 255, 255, 0.06)",
+        borderRight:
+          bare || last ? "none" : "1px solid rgba(255, 255, 255, 0.06)",
         background: bare ? "transparent" : "#18181d",
       }}
     >

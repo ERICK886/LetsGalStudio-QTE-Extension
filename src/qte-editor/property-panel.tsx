@@ -55,6 +55,21 @@ const COLOR_FIELDS: ReadonlySet<QteStyleFieldKey> = new Set<QteStyleFieldKey>([
   "flashColor",
 ]);
 
+/** 数值类样式字段键（与 `QTE_STYLE_LIMITS` 键一致） */
+type QteNumericStyleFieldKey = keyof typeof QTE_STYLE_LIMITS;
+
+/**
+ * 判断样式字段是否为数值字段（在 `QTE_STYLE_LIMITS` 中有 min/max）。
+ *
+ * @param field - 样式字段键
+ * @returns 若为数值字段则 TypeScript 窄化为 `QteNumericStyleFieldKey`
+ */
+function isNumericStyleField(
+  field: QteStyleFieldKey,
+): field is QteNumericStyleFieldKey {
+  return field in QTE_STYLE_LIMITS;
+}
+
 /**
  * 将任意 CSS 颜色字符串规范化为 `<input type="color">` 可用的 `#RRGGBB`。
  *
@@ -78,7 +93,7 @@ function toColorInputValue(css: string): string {
  *
  * 命中以下任一情况即视为带 alpha：
  * - 8 位 hex（`#RRGGBBAA`）
- * - `rgba(...)` 显式 alpha
+ * - `rgba(...)` / `hsla(...)`（函数形式即视为含 alpha 通道，含整数 0/1）
  *
  * @param css - 原始 CSS 颜色字符串
  * @returns 是否带 alpha
@@ -88,29 +103,7 @@ function hasAlpha(css: string): boolean {
   if (/^#[0-9a-fA-F]{8}$/.test(trimmed)) {
     return true;
   }
-  return /^rgba?\(/i.test(trimmed) && /,\s*0?\.\d+/.test(trimmed);
-}
-
-/**
- * 提取颜色字符串末尾的 alpha 后缀（hex 两位或 rgba 末段）。
- *
- * @param css - 原始 CSS 颜色字符串
- * @returns alpha 后缀字符串；无 alpha 时返回空串
- */
-function extractAlphaSuffix(css: string): string {
-  const trimmed = css.trim();
-  const hex8 = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(trimmed);
-  if (hex8) {
-    return hex8[1]!;
-  }
-  const rgba = /^rgba?\(\s*([^)]+)\s*\)$/i.exec(trimmed);
-  if (rgba) {
-    const parts = rgba[1]!.split(",").map((p) => p.trim());
-    if (parts.length === 4) {
-      return parts[3]!;
-    }
-  }
-  return "";
+  return /^rgba\(/i.test(trimmed) || /^hsla\(/i.test(trimmed);
 }
 
 /**
@@ -219,17 +212,22 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           );
         }
 
-        return (
-          <NumberField
-            key={field}
-            label={FIELD_LABELS[field]}
-            value={Number(value)}
-            readOnly={readOnly}
-            min={QTE_STYLE_LIMITS[field as keyof typeof QTE_STYLE_LIMITS].min}
-            max={QTE_STYLE_LIMITS[field as keyof typeof QTE_STYLE_LIMITS].max}
-            onChange={(next) => onChange(field, next)}
-          />
-        );
+        if (isNumericStyleField(field)) {
+          const limits = QTE_STYLE_LIMITS[field];
+          return (
+            <NumberField
+              key={field}
+              label={FIELD_LABELS[field]}
+              value={Number(value)}
+              readOnly={readOnly}
+              min={limits.min}
+              max={limits.max}
+              onChange={(next) => onChange(field, next)}
+            />
+          );
+        }
+
+        return null;
       })}
 
       {showLocalPrompt && (
@@ -243,7 +241,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
       {showFlashButton && (
         <button
           type="button"
-          onClick={onFlashPreview}
+          onClick={() => onFlashPreview?.()}
           disabled={readOnly}
           style={{
             marginTop: 4,
