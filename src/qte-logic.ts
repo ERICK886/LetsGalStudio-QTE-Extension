@@ -1,10 +1,12 @@
 /**
  * 文件名：qte-logic.ts
- * 作者：池水三两七
+ * 作者：池水三两升
  * 日期：2026-08-06
- * 版本：1.0.0
+ * 版本：1.1.0
  * 描述：QTE 参数规范化与 perfect/normal/defeat 判定（纯函数）
  */
+
+import { clampPercent } from "./qte-style";
 
 export type QteMode = "single" | "mash";
 export type QteOutcome = "perfect" | "normal" | "defeat";
@@ -25,6 +27,14 @@ export interface QteConfigInput {
   normalChapterId?: string;
   defeatChapterId?: string;
   prompt?: string;
+  /**
+   * QTE 中心水平位置（舞台宽度百分比 0–100），默认 50。
+   */
+  posX?: number;
+  /**
+   * QTE 中心垂直位置（舞台高度百分比 0–100），默认 50。
+   */
+  posY?: number;
 }
 
 export interface QteNormalizedConfig {
@@ -44,6 +54,10 @@ export interface QteNormalizedConfig {
   normalChapterId?: string;
   defeatChapterId?: string;
   prompt: string;
+  /** 舞台宽度百分比 0–100 */
+  posX: number;
+  /** 舞台高度百分比 0–100 */
+  posY: number;
 }
 
 /**
@@ -97,6 +111,8 @@ export function normalizeQteConfig(input: QteConfigInput): QteNormalizedConfig {
     normalChapterId: emptyToUndef(input.normalChapterId),
     defeatChapterId: emptyToUndef(input.defeatChapterId),
     prompt: (input.prompt ?? "").trim(),
+    posX: clampPercent(input.posX, 50),
+    posY: clampPercent(input.posY, 50),
   };
 }
 

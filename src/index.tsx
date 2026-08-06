@@ -2,13 +2,8 @@
  * 文件名：index.tsx
  * 作者：池水三两升
  * 日期：2026-08-06
- * 版本：1.0.0
- * 描述：QTE 扩展入口 —— 提供全屏 UI 覆盖层与 start-qte 剧本方法。
- *
- * 本文件是 AVG+ Studio 加载该扩展时的入口点：
- * - 通过 @extension({ id: "qte", label: "QTE" }) 声明模块身份
- * - 通过 render() 把 QteOverlay 组件暴露给「显示界面」Action
- * - 通过 static startQte = method({...}) 把 QTE 玩法暴露给「调用方法」Action
+ * 版本：1.1.0
+ * 描述：QTE 扩展入口 —— UI 覆盖层、项目样式设置、start-qte 剧本方法（含百分比定位）
  *
  * 使用示例（在剧本中调用）：
  * ```
@@ -16,32 +11,31 @@
  *   mode: single
  *   key: KeyF
  *   timeoutSec: 5
- *   perfectStartSec: 1
- *   perfectEndSec: 2
- *   perfectFragment: fragment_perfect
- *   normalFragment: fragment_normal
- *   defeatFragment: fragment_defeat
+ *   posX: 50
+ *   posY: 70
+ *   perfectFragment: ...
  * ```
+ *
+ * 样式在 Studio「扩展设置」中配置（颜色 / 环直径 / 描边 / 按钮尺寸）。
  */
 import {
   Extension,
   extension,
   method,
+  settings,
   type ExtensionRenderData,
 } from "@avg-studio/sdk";
 import { QteOverlay, type QteOverlayProps } from "./qte-overlay";
 import { runQteSession, skipQteSession } from "./qte-session";
 import type { QteMode } from "./qte-logic";
+import { QTE_STYLE_DEFAULTS } from "./qte-style";
 
 /**
  * 安全读取 schema 中 `fragment` 字段通过 `chapterField` 写入的辅助章节 id。
  *
- * `chapterField` 不会在 `ParamsOf<typeof schema>` 中出现，因此需要把参数对象
- * 收窄到 `Record<string, unknown>` 后再读取，避免使用 `any`。
- *
- * @param params - 方法运行时收到的参数对象（已做最小收窄）
- * @param key - chapterField 指定的辅助键名，例如 "perfectChapterId"
- * @returns 非空字符串时返回 trimmed 后的章节 id；否则 undefined
+ * @param params - 方法运行时收到的参数对象
+ * @param key - chapterField 指定的辅助键名
+ * @returns 非空章节 id 或 undefined
  */
 function readChapterId(params: Record<string, unknown>, key: string): string | undefined {
   const value = params[key];
@@ -52,13 +46,10 @@ function readChapterId(params: Record<string, unknown>, key: string): string | u
 }
 
 /**
- * 将 startQte 方法的 params 转换为 runQteSession / skipQteSession 需要的配置。
- *
- * 因为 `chapterField` 辅助字段不在 schema 的 ParamsOf 中，这里先把参数对象
- * 收窄为 `Record<string, unknown>`，再用 readChapterId 安全读取章节 id。
+ * 将 startQte 方法的 params 转换为会话配置。
  *
  * @param params - startQte 方法收到的参数
- * @returns 完整的 QTE 配置输入对象
+ * @returns QteConfigInput
  */
 function buildQteConfigInput(params: Record<string, unknown>): import("./qte-logic").QteConfigInput {
   return {
@@ -77,25 +68,66 @@ function buildQteConfigInput(params: Record<string, unknown>): import("./qte-log
     normalChapterId: readChapterId(params, "normalChapterId"),
     defeatChapterId: readChapterId(params, "defeatChapterId"),
     prompt: typeof params.prompt === "string" ? params.prompt : undefined,
+    posX: typeof params.posX === "number" ? params.posX : 50,
+    posY: typeof params.posY === "number" ? params.posY : 50,
   };
 }
 
 /**
- * QTE 扩展模块。
- *
- * 一个 Extension 子类同时承担 UI 与剧本方法：
- * - render() 供「显示界面」Action 使用，将 QteOverlay 渲染到舞台顶层
- * - startQte 方法供「调用方法」Action 使用，启动一场单键或连打 QTE
+ * QTE 扩展模块：UI + 项目设置 + 剧本方法。
  */
 @extension({ id: "qte", label: "QTE" })
 class QteExtension extends Extension<QteOverlayProps> {
   /**
+   * 项目级样式设置（Studio 扩展配置面板可见）。
+   *
+   * 颜色支持 alpha；尺寸有 min/max，便于检查器使用范围控件。
+   */
+  static settings = settings((s) => ({
+    outerRingColor: s
+      .color("外环颜色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.outerRingColor)
+      .describe("倒计时外环描边颜色"),
+    perfectColor: s
+      .color("Perfect颜色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.perfectColor)
+      .describe("恰到好处内环与高亮颜色"),
+    buttonBgColor: s
+      .color("按钮底色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.buttonBgColor),
+    buttonTextColor: s
+      .color("按钮文字色")
+      .default(QTE_STYLE_DEFAULTS.buttonTextColor),
+    flashColor: s
+      .color("闪光颜色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.flashColor)
+      .describe("Perfect 命中时的扩散闪光"),
+    ringDiameter: s
+      .number("环直径(px)")
+      .default(QTE_STYLE_DEFAULTS.ringDiameter)
+      .range(120, 600)
+      .step(1)
+      .describe("外环基准直径，实际大小随倒计时缩放"),
+    ringStroke: s
+      .number("描边粗细(px)")
+      .default(QTE_STYLE_DEFAULTS.ringStroke)
+      .range(2, 20)
+      .step(1),
+    buttonSize: s
+      .number("按钮尺寸(px)")
+      .default(QTE_STYLE_DEFAULTS.buttonSize)
+      .range(48, 200)
+      .step(1),
+  }));
+
+  /**
    * 返回本扩展的 UI 渲染描述。
    *
-   * 当剧本调用「显示界面」或扩展预览 Tab 加载时，宿主会调用此方法。
-   * this.data 可能为 undefined（例如 Studio 预览 Tab），这里回退到空 props。
-   *
-   * @returns 包含 React 组件与 props 的 ExtensionRenderData
+   * @returns ExtensionRenderData
    */
   render(): ExtensionRenderData<QteOverlayProps> {
     return {
@@ -106,16 +138,11 @@ class QteExtension extends Extension<QteOverlayProps> {
 
   /**
    * 剧本方法：启动 QTE。
-   *
-   * 在 Studio 的「调用方法」picker 中显示为「开始 QTE」，支持：
-   * - 单键限时模式 / 连打模式
-   * - Perfect 时间窗口与对应片段
-   * - 失败/跳过/按错键等分支
    */
   static startQte = method({
     id: "start-qte",
     title: "开始 QTE",
-    description: "单键或连打限时 QTE，结果可为 perfect / normal / defeat",
+    description: "单键或连打限时 QTE；可用 posX/posY（百分比）放置位置",
     schema: {
       mode: {
         type: "enum",
@@ -134,6 +161,22 @@ class QteExtension extends Extension<QteOverlayProps> {
         min: 0.1,
         step: 0.1,
         required: true,
+      },
+      posX: {
+        type: "number",
+        label: "水平位置(%)",
+        default: 50,
+        min: 0,
+        max: 100,
+        step: 1,
+      },
+      posY: {
+        type: "number",
+        label: "垂直位置(%)",
+        default: 50,
+        min: 0,
+        max: 100,
+        step: 1,
       },
       perfectStartSec: {
         type: "number",
@@ -185,10 +228,10 @@ class QteExtension extends Extension<QteOverlayProps> {
     },
 
     /**
-     * 正常执行 QTE：显示 UI、绑定按键、等待玩家输入或超时，最后跳转对应片段。
+     * 正常执行 QTE。
      *
-     * @param ctx - 扩展上下文，用于显示/隐藏 UI 与跳转片段
-     * @param params - 从 schema 推导出的参数对象；chapterField 辅助字段需额外收窄
+     * @param ctx - 扩展上下文
+     * @param params - 方法参数
      */
     async run(ctx, params) {
       const allParams = params as Record<string, unknown>;
@@ -196,12 +239,10 @@ class QteExtension extends Extension<QteOverlayProps> {
     },
 
     /**
-     * 玩家快进或跳过 QTE 时的简化行为。
-     *
-     * 直接按 skipCountsAsPass 计算结果并跳转对应片段，不等待玩家输入。
+     * 快进/跳过时的结算。
      *
      * @param ctx - 扩展上下文
-     * @param params - 从 schema 推导出的参数对象
+     * @param params - 方法参数
      */
     async skip(ctx, params) {
       const allParams = params as Record<string, unknown>;

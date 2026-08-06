@@ -60,6 +60,10 @@ export interface QteUiSnapshot {
   perfectEnabled: boolean;
   /** 是否应显示 Perfect 命中闪光 */
   showPerfectFlash: boolean;
+  /** QTE 中心水平位置（舞台宽度百分比 0–100） */
+  posX: number;
+  /** QTE 中心垂直位置（舞台高度百分比 0–100） */
+  posY: number;
 }
 
 /** 订阅 UI 快照变化的监听器类型 */
@@ -222,6 +226,8 @@ function buildSnapshot(session: ActiveSession, cfg: QteNormalizedConfig): QteUiS
     perfectEndSec: cfg.perfectEndSec,
     perfectEnabled: cfg.perfectEnabled,
     showPerfectFlash: false,
+    posX: cfg.posX,
+    posY: cfg.posY,
   };
 }
 
@@ -375,6 +381,8 @@ export async function runQteSession(
         perfectEndSec: cfg.perfectEndSec,
         perfectEnabled: cfg.perfectEnabled,
         showPerfectFlash: false,
+        posX: cfg.posX,
+        posY: cfg.posY,
       });
 
       if (remaining <= 0) {
@@ -424,6 +432,8 @@ export async function runQteSession(
         perfectEndSec: cfg.perfectEndSec,
         perfectEnabled: cfg.perfectEnabled,
         showPerfectFlash: false,
+        posX: cfg.posX,
+        posY: cfg.posY,
       });
 
       try {

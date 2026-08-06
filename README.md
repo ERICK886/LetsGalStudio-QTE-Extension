@@ -12,10 +12,11 @@
 
 ```
 src/
-  index.tsx        扩展入口 - 导出 QteExtension（UI + start-qte 方法）
-  qte-overlay.tsx  视觉组件 - 全屏透明覆盖层、双环进度、Perfect 区域、连打计数
+  index.tsx        扩展入口 - QteExtension（UI + settings + start-qte）
+  qte-overlay.tsx  视觉组件 - 百分比定位、可配置样式、双环进度
   qte-session.ts   会话生命周期 - 计时、按键绑定、判定结算
-  qte-logic.ts     判定逻辑 - 参数规范化、perfect/normal/defeat 计算
+  qte-logic.ts     判定逻辑 - 参数规范化、perfect/normal/defeat
+  qte-style.ts     样式默认值与从项目设置解析
   key-utils.ts     按键工具 - 键名标准化与友好标签
   *.test.ts        逻辑单元测试
 extension.json     manifest - id / 版本 / sdkVersion（id 保持 qte-f9e583 不变）
@@ -58,6 +59,8 @@ Studio 的 Preview 会自动接住 `dist/index.js` 的更新（约 200ms 延迟�
 | `mode` | enum | 否 | `single` | `single` = 单键限时；`mash` = 连打 |
 | `key` | string | 是 | `KeyF` | 按键代码，如 `KeyF`、`Space`、`KeyA` |
 | `timeoutSec` | number | 是 | `5` | 总时限（秒），最小 0.1 |
+| `posX` | number | 否 | `50` | 水平位置：舞台宽度百分比 0–100（50=居中） |
+| `posY` | number | 否 | `50` | 垂直位置：舞台高度百分比 0–100（50=居中） |
 | `perfectStartSec` | number | 否 | `0` | Perfect 窗口起点（秒） |
 | `perfectEndSec` | number | 否 | `1` | Perfect 窗口终点（秒） |
 | `mashCount` | number | 否 | `10` | 连打模式需要按下的次数，最小 1 |
@@ -80,22 +83,34 @@ QTE 结束后会根据玩家输入自动跳转到对应片段：
 - `normal`：在时限内完成但不在 Perfect 窗口内
 - `defeat`：超时、按错键、或跳过时 `skipCountsAsPass=false`
 
+## 扩展设置（样式）
+
+在 Studio 的扩展 / 项目设置中可配置本扩展样式（全局默认皮肤）：
+
+| 设置项 | 说明 | 默认 |
+|--------|------|------|
+| 外环颜色 | 倒计时外环 | `#FFFFFFB8` |
+| Perfect颜色 | 内环与高亮 | `#FFD66B` |
+| 按钮底色 / 文字色 / 闪光颜色 | 中心按钮与 Perfect 闪光 | 见默认表 |
+| 环直径(px) | 120–600 | `320` |
+| 描边粗细(px) | 2–20 | `6` |
+| 按钮尺寸(px) | 48–200 | `88` |
+
+每次调用仍用 `posX` / `posY`（百分比）单独摆放位置。
+
 ## Studio 验收步骤
 
 1. 打开 AVG+ Studio，进入目标项目。
 2. 在「扩展」设置中确认已加载 `qte-f9e583`（manifest id 不变）。
-3. 在剧本中新增 Action：
+3. （可选）在扩展设置中改颜色 / 尺寸，预览是否生效。
+4. 在剧本中新增 Action：
    - 类型选择「调用方法」
    - 扩展选择 `qte-f9e583`
    - 方法选择 `start-qte`
-4. 配置参数，为 `perfectFragment` / `normalFragment` / `defeatFragment`
-   分别选择目标片段。
-5. 保存剧本，点击 Preview。
-6. 运行到该 Action 时，屏幕中央出现 QTE 圆环：
-   - 单键模式：在 Perfect 窗口内按键跳 `perfectFragment`
-   - 连打模式：快速按键直到计数达到 `mashCount`
-   - 超时或按错键跳 `defeatFragment`
-7. 验证三种结果都能正确跳转对应片段，且 Preview 控制台无报错。
+5. 配置参数，设置 `posX`/`posY`（如 30 / 70）与三种结果片段。
+6. 保存剧本，点击 Preview。
+7. 运行到该 Action 时，QTE 应出现在对应百分比位置，并套用设置中的样式。
+8. 验证三种结果跳转与 Preview 控制台无报错。
 
 ## 关键概念
 
@@ -103,8 +118,9 @@ QTE 结束后会根据玩家输入自动跳转到对应片段：
   装饰器声明；`id` 在剧本里以 `<扩展id>/<id>` 被引用，是稳定标识。
 - **render()**：实现了就有界面，Action block「显示界面」会列出来；不实现 = 纯方法模块。
 - **method()**：通过 `static xxx = method({...})` 暴露给「调用方法」Action。
+- **settings()**：项目级扩展设置，作者在 Studio 配置面板修改。
 - **ctx (ExtensionContext)**：运行时上下文，暴露 `ctx.ui.show/hide`、
-  `ctx.input.bindShortcut`、`ctx.flow.unsafe_goToFragment` 等接口。
+  `ctx.input.bindShortcut`、`ctx.flow.unsafe_goToFragment`、`ctx.settings` 等接口。
 - **props**：从剧本的「显示界面」block 传入，通过 `this.data` 在 `render()` 里拿到。
 
 ## 测试
@@ -123,5 +139,4 @@ npm run test:logic
 
 - 多子模块：在 `src/index.tsx` 中再加一个 `@extension({...}) export class XxxExtension extends Extension<...>`。
 - 持久化数据：加 `static saveSchema = defineSave({ ... })`，`this.save` 自动可读写。
-- 项目设置：加 `static settings = settings(s => ({ ... }))`，在 Studio 项目设置里可见。
 - 完整 SDK 文档：Studio 顶部 · 帮助 · SDK 手册。

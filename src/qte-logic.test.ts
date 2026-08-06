@@ -30,6 +30,23 @@ describe("normalizeQteConfig", () => {
     assert.equal(cfg.perfectEndSec, 5);
     assert.equal(cfg.perfectEnabled, true);
     assert.equal(cfg.mashCount, 1);
+    assert.equal(cfg.posX, 50);
+    assert.equal(cfg.posY, 50);
+
+    const placed = normalizeQteConfig({
+      mode: "single",
+      key: "KeyF",
+      timeoutSec: 5,
+      perfectStartSec: 0,
+      perfectEndSec: 1,
+      mashCount: 1,
+      failOnWrongKey: false,
+      skipCountsAsPass: true,
+      posX: 120,
+      posY: -10,
+    });
+    assert.equal(placed.posX, 100);
+    assert.equal(placed.posY, 0);
 
     const bad = normalizeQteConfig({
       mode: "single",
