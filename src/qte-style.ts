@@ -45,6 +45,18 @@ export const QTE_STYLE_DEFAULTS: QteResolvedStyle = {
   buttonSize: 88,
 };
 
+/**
+ * 各数值样式字段的可编辑范围（与 settings schema 一致）。
+ */
+export const QTE_STYLE_LIMITS = {
+  ringDiameter: { min: 64, max: 600 },
+  ringStroke: { min: 2, max: 20 },
+  buttonSize: { min: 48, max: 200 },
+} as const;
+
+/** QteResolvedStyle 的字段名联合类型，供样式编辑器按字段写入时使用 */
+export type QteStyleFieldKey = keyof QteResolvedStyle;
+
 /** 模块内 settings 声明所在的 uiId（与 @extension({ id: "qte" }) 一致） */
 export const QTE_SETTINGS_UI_ID = "qte";
 
@@ -159,6 +171,46 @@ function asClampedNumber(
   return Math.min(max, Math.max(min, n));
 }
 
+/** 颜色类样式字段集合，用于 normalizeQteStyleField 分支判断 */
+const QTE_COLOR_FIELDS = new Set<QteStyleFieldKey>([
+  "outerRingColor",
+  "perfectColor",
+  "buttonBgColor",
+  "buttonTextColor",
+  "flashColor",
+]);
+
+/**
+ * 将单个样式字段的原始输入规范化为可写入 settings 的值。
+ *
+ * - 颜色字段：非法或空值回退为该字段在 QTE_STYLE_DEFAULTS 中的默认值
+ * - 数值字段：经 asClampedNumber 裁剪到 QTE_STYLE_LIMITS 对应 min/max
+ *
+ * @param field - 样式字段名，如 `"ringDiameter"`、`"outerRingColor"`
+ * @param value - 编辑器或快照中的原始值（字符串、数字或宿主对象）
+ * @returns 规范化后的 string（颜色）或 number（尺寸）
+ *
+ * @example
+ * normalizeQteStyleField("ringDiameter", 10);       // 64（下限）
+ * normalizeQteStyleField("outerRingColor", "");     // QTE_STYLE_DEFAULTS.outerRingColor
+ */
+export function normalizeQteStyleField(
+  field: QteStyleFieldKey,
+  value: unknown,
+): string | number {
+  if (QTE_COLOR_FIELDS.has(field)) {
+    return asColor(value, QTE_STYLE_DEFAULTS[field]);
+  }
+
+  const limits = QTE_STYLE_LIMITS[field as keyof typeof QTE_STYLE_LIMITS];
+  return asClampedNumber(
+    value,
+    QTE_STYLE_DEFAULTS[field],
+    limits.min,
+    limits.max,
+  );
+}
+
 /**
  * 从扩展 settings 快照解析完整样式。
  *
@@ -192,20 +244,20 @@ export function resolveQteStyle(
     ringDiameter: asClampedNumber(
       pickSettingValue(snapshot, "ringDiameter"),
       QTE_STYLE_DEFAULTS.ringDiameter,
-      64,
-      600,
+      QTE_STYLE_LIMITS.ringDiameter.min,
+      QTE_STYLE_LIMITS.ringDiameter.max,
     ),
     ringStroke: asClampedNumber(
       pickSettingValue(snapshot, "ringStroke"),
       QTE_STYLE_DEFAULTS.ringStroke,
-      2,
-      20,
+      QTE_STYLE_LIMITS.ringStroke.min,
+      QTE_STYLE_LIMITS.ringStroke.max,
     ),
     buttonSize: asClampedNumber(
       pickSettingValue(snapshot, "buttonSize"),
       QTE_STYLE_DEFAULTS.buttonSize,
-      48,
-      200,
+      QTE_STYLE_LIMITS.buttonSize.min,
+      QTE_STYLE_LIMITS.buttonSize.max,
     ),
   };
 }

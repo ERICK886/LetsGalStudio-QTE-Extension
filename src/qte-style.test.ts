@@ -7,7 +7,13 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pickSettingValue, resolveQteStyle } from "./qte-style";
+import {
+  QTE_STYLE_DEFAULTS,
+  QTE_STYLE_LIMITS,
+  normalizeQteStyleField,
+  pickSettingValue,
+  resolveQteStyle,
+} from "./qte-style";
 
 describe("pickSettingValue", () => {
   it("reads bare, prefixed and nested keys", () => {
@@ -33,5 +39,19 @@ describe("resolveQteStyle", () => {
     assert.equal(style.buttonBgColor, "#FF0000");
     assert.equal(style.buttonTextColor, "#00FF00");
     assert.equal(style.buttonSize, 120);
+  });
+});
+
+describe("normalizeQteStyleField", () => {
+  it("clamps ring diameter", () => {
+    assert.equal(normalizeQteStyleField("ringDiameter", 10), QTE_STYLE_LIMITS.ringDiameter.min);
+    assert.equal(normalizeQteStyleField("ringDiameter", 999), QTE_STYLE_LIMITS.ringDiameter.max);
+  });
+
+  it("falls back invalid color", () => {
+    assert.equal(
+      normalizeQteStyleField("outerRingColor", ""),
+      QTE_STYLE_DEFAULTS.outerRingColor,
+    );
   });
 });
