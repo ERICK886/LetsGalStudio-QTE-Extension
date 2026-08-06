@@ -11,6 +11,14 @@ import { clampPercent } from "./qte-style";
 export type QteMode = "single" | "mash";
 export type QteOutcome = "perfect" | "normal" | "defeat";
 
+/**
+ * 结果片段调用模式。
+ *
+ * - `return`：`callFragment`，子片段结束后回到「开始 QTE」之后继续
+ * - `goto`：`unsafe_goToFragment`，切断当前流程，播完后不回到调用点
+ */
+export type QteFragmentCallMode = "return" | "goto";
+
 export interface QteConfigInput {
   mode: QteMode;
   key: string;
@@ -26,6 +34,12 @@ export interface QteConfigInput {
   perfectChapterId?: string;
   normalChapterId?: string;
   defeatChapterId?: string;
+  /** Perfect 片段调用模式，默认 return */
+  perfectCallMode?: QteFragmentCallMode;
+  /** Normal 片段调用模式，默认 return */
+  normalCallMode?: QteFragmentCallMode;
+  /** Defeat 片段调用模式，默认 return */
+  defeatCallMode?: QteFragmentCallMode;
   prompt?: string;
   /**
    * QTE 中心水平位置（舞台宽度百分比 0–100），默认 50。
@@ -53,6 +67,9 @@ export interface QteNormalizedConfig {
   perfectChapterId?: string;
   normalChapterId?: string;
   defeatChapterId?: string;
+  perfectCallMode: QteFragmentCallMode;
+  normalCallMode: QteFragmentCallMode;
+  defeatCallMode: QteFragmentCallMode;
   prompt: string;
   /** 舞台宽度百分比 0–100 */
   posX: number;
@@ -69,6 +86,16 @@ export interface QteNormalizedConfig {
 function emptyToUndef(v?: string): string | undefined {
   const s = (v ?? "").trim();
   return s ? s : undefined;
+}
+
+/**
+ * 规范化片段调用模式；非法值回落为 return（结束后返回）。
+ *
+ * @param value - 原始模式
+ * @returns `return` 或 `goto`
+ */
+function normalizeCallMode(value: unknown): QteFragmentCallMode {
+  return value === "goto" ? "goto" : "return";
 }
 
 /**
@@ -110,6 +137,9 @@ export function normalizeQteConfig(input: QteConfigInput): QteNormalizedConfig {
     perfectChapterId: emptyToUndef(input.perfectChapterId),
     normalChapterId: emptyToUndef(input.normalChapterId),
     defeatChapterId: emptyToUndef(input.defeatChapterId),
+    perfectCallMode: normalizeCallMode(input.perfectCallMode),
+    normalCallMode: normalizeCallMode(input.normalCallMode),
+    defeatCallMode: normalizeCallMode(input.defeatCallMode),
     prompt: (input.prompt ?? "").trim(),
     posX: clampPercent(input.posX, 50),
     posY: clampPercent(input.posY, 50),
@@ -180,4 +210,20 @@ export function pickFragment(
     return { fragmentId: cfg.normalFragment, chapterId: cfg.normalChapterId };
   }
   return { fragmentId: cfg.defeatFragment, chapterId: cfg.defeatChapterId };
+}
+
+/**
+ * 按 outcome 选取片段调用模式。
+ *
+ * @param outcome - 判定结果
+ * @param cfg - 规范化配置
+ * @returns `return`（结束后返回）或 `goto`（不返回）
+ */
+export function pickFragmentCallMode(
+  outcome: QteOutcome,
+  cfg: QteNormalizedConfig,
+): QteFragmentCallMode {
+  if (outcome === "perfect") return cfg.perfectCallMode;
+  if (outcome === "normal") return cfg.normalCallMode;
+  return cfg.defeatCallMode;
 }

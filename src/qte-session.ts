@@ -17,6 +17,7 @@ import {
   normalizeQteConfig,
   outcomeFromSkip,
   pickFragment,
+  pickFragmentCallMode,
   type QteConfigInput,
   type QteNormalizedConfig,
   type QteOutcome,
@@ -355,15 +356,28 @@ export async function runQteSession(
         jump = false;
       }
 
-      // 先调用结果片段并等待其返回，再结束 QTE 方法，主剧本才能从调用点继续
+      // 按作者配置的调用模式跳转结果片段
       if (jump) {
         try {
           const { fragmentId, chapterId } = pickFragment(outcome, cfg);
           if (fragmentId) {
-            await ctx.flow.callFragment(
-              fragmentId,
-              chapterId ? { chapterId } : undefined,
-            );
+            const callMode = pickFragmentCallMode(outcome, cfg);
+            const options = chapterId ? { chapterId } : undefined;
+
+            if (callMode === "return") {
+              // 子片段结束后回到调用点：先 await，再结束 QTE 方法
+              await ctx.flow.callFragment(fragmentId, options);
+            } else {
+              // 切断流程、不返回：先结束方法 Promise，再 goTo
+              if (!session.promiseSettled) {
+                session.promiseSettled = true;
+                session.resolve(outcome);
+              }
+              ctx.flow.unsafe_goToFragment(fragmentId, options);
+              session.removeAbortListener?.();
+              session.removeAbortListener = null;
+              return;
+            }
           }
         } catch {
           // 忽略宿主跳转错误，避免抛入未完成的 Promise 造成软锁
@@ -614,16 +628,18 @@ export async function skipQteSession(
   const outcome = outcomeFromSkip(cfg.skipCountsAsPass);
 
   if (active) {
-    // 走统一结算路径，包含 UI 隐藏与片段调用（callFragment 会返回）
     await active.finish(outcome, true);
   } else {
     const { fragmentId, chapterId } = pickFragment(outcome, cfg);
     if (fragmentId) {
+      const callMode = pickFragmentCallMode(outcome, cfg);
+      const options = chapterId ? { chapterId } : undefined;
       try {
-        await ctx.flow.callFragment(
-          fragmentId,
-          chapterId ? { chapterId } : undefined,
-        );
+        if (callMode === "return") {
+          await ctx.flow.callFragment(fragmentId, options);
+        } else {
+          ctx.flow.unsafe_goToFragment(fragmentId, options);
+        }
       } catch {
         // 忽略宿主跳转错误
       }

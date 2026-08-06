@@ -11,6 +11,7 @@ import {
   judgeSingle,
   normalizeQteConfig,
   outcomeFromSkip,
+  pickFragmentCallMode,
 } from "./qte-logic";
 
 describe("normalizeQteConfig", () => {
@@ -101,5 +102,26 @@ describe("outcomeFromSkip", () => {
   it("defaults to normal when pass", () => {
     assert.equal(outcomeFromSkip(true), "normal");
     assert.equal(outcomeFromSkip(false), "defeat");
+  });
+});
+
+describe("pickFragmentCallMode", () => {
+  it("uses per-outcome call mode", () => {
+    const cfg = normalizeQteConfig({
+      mode: "single",
+      key: "KeyF",
+      timeoutSec: 5,
+      perfectStartSec: 0,
+      perfectEndSec: 1,
+      mashCount: 1,
+      failOnWrongKey: false,
+      skipCountsAsPass: true,
+      perfectCallMode: "goto",
+      normalCallMode: "return",
+      defeatCallMode: "goto",
+    });
+    assert.equal(pickFragmentCallMode("perfect", cfg), "goto");
+    assert.equal(pickFragmentCallMode("normal", cfg), "return");
+    assert.equal(pickFragmentCallMode("defeat", cfg), "goto");
   });
 });

@@ -27,8 +27,14 @@ import {
 } from "@avg-studio/sdk";
 import { QteOverlay, type QteOverlayProps } from "./qte-overlay";
 import { runQteSession, skipQteSession } from "./qte-session";
-import type { QteMode } from "./qte-logic";
+import type { QteFragmentCallMode, QteMode } from "./qte-logic";
 import { QTE_STYLE_DEFAULTS } from "./qte-style";
+
+/** 片段调用模式在检查器中的选项 */
+const CALL_MODE_OPTIONS = [
+  { label: "结束后返回", value: "return" },
+  { label: "不返回(切断)", value: "goto" },
+] as const;
 
 /**
  * 安全读取 schema 中 `fragment` 字段通过 `chapterField` 写入的辅助章节 id。
@@ -67,6 +73,9 @@ function buildQteConfigInput(params: Record<string, unknown>): import("./qte-log
     perfectChapterId: readChapterId(params, "perfectChapterId"),
     normalChapterId: readChapterId(params, "normalChapterId"),
     defeatChapterId: readChapterId(params, "defeatChapterId"),
+    perfectCallMode: params.perfectCallMode as QteFragmentCallMode | undefined,
+    normalCallMode: params.normalCallMode as QteFragmentCallMode | undefined,
+    defeatCallMode: params.defeatCallMode as QteFragmentCallMode | undefined,
     prompt: typeof params.prompt === "string" ? params.prompt : undefined,
     posX: typeof params.posX === "number" ? params.posX : 50,
     posY: typeof params.posY === "number" ? params.posY : 50,
@@ -214,15 +223,33 @@ class QteExtension extends Extension<QteOverlayProps> {
         label: "Perfect片段",
         chapterField: "perfectChapterId",
       },
+      perfectCallMode: {
+        type: "enum",
+        label: "Perfect调用",
+        default: "return",
+        options: [...CALL_MODE_OPTIONS],
+      },
       normalFragment: {
         type: "fragment",
         label: "Normal片段",
         chapterField: "normalChapterId",
       },
+      normalCallMode: {
+        type: "enum",
+        label: "Normal调用",
+        default: "return",
+        options: [...CALL_MODE_OPTIONS],
+      },
       defeatFragment: {
         type: "fragment",
         label: "Defeat片段",
         chapterField: "defeatChapterId",
+      },
+      defeatCallMode: {
+        type: "enum",
+        label: "Defeat调用",
+        default: "return",
+        options: [...CALL_MODE_OPTIONS],
       },
       prompt: { type: "string", label: "提示文案" },
     },

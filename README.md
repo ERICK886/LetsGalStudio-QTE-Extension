@@ -67,8 +67,11 @@ Studio 的 Preview 会自动接住 `dist/index.js` 的更新（约 200ms 延迟�
 | `failOnWrongKey` | boolean | 否 | `false` | 是否按错键立即判定失败 |
 | `skipCountsAsPass` | boolean | 否 | `true` | 玩家跳过时是否计为 normal（通过） |
 | `perfectFragment` | fragment | 否 | - | Perfect 结果跳转的片段 |
+| `perfectCallMode` | enum | 否 | `return` | `return`=播完返回；`goto`=不返回(切断) |
 | `normalFragment` | fragment | 否 | - | Normal 结果跳转的片段 |
+| `normalCallMode` | enum | 否 | `return` | 同上 |
 | `defeatFragment` | fragment | 否 | - | Defeat 结果跳转的片段 |
+| `defeatCallMode` | enum | 否 | `return` | 同上 |
 | `prompt` | string | 否 | - | 覆盖层顶部提示文案 |
 
 > fragment 类型参数会通过 `chapterField` 自动把所属章节 id 写入
