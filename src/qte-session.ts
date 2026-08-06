@@ -276,9 +276,6 @@ export async function runQteSession(
       }
       session.settled = true;
 
-      session.removeAbortListener?.();
-      session.removeAbortListener = null;
-
       if (session.timer) {
         clearInterval(session.timer);
         session.timer = null;
@@ -336,6 +333,10 @@ export async function runQteSession(
         session.promiseSettled = true;
         session.resolve(outcome);
       }
+
+      // 保留 abort 监听直至结算完成，闪光期间 abort 仍可禁止跳转
+      session.removeAbortListener?.();
+      session.removeAbortListener = null;
     };
 
     // 将当前会话注册为全局活跃会话
@@ -448,12 +449,28 @@ export async function runQteSession(
      */
     const onAbort = () => {
       void (async () => {
-        // 即使 finish 已 settled，也要阻止它后续再跳转片段
-        session.allowJump = false;
-
-        if (active !== session || session.promiseSettled) {
+        if (active !== session) {
           return;
         }
+
+        // 无论 finish 是否进行中，abort 都必须禁止后续片段跳转
+        session.allowJump = false;
+
+        // Promise 已 resolve：仅确保移除监听，避免重复清理
+        if (session.promiseSettled) {
+          session.removeAbortListener?.();
+          session.removeAbortListener = null;
+          return;
+        }
+
+        // finish 已 settled（如 Perfect 闪光 sleep 期间）：禁止跳转，交由 finish 收尾
+        if (session.settled) {
+          session.removeAbortListener?.();
+          session.removeAbortListener = null;
+          return;
+        }
+
+        // 未进入 finish：完整清理并以 defeat 结束
         session.settled = true;
 
         session.removeAbortListener?.();
@@ -477,8 +494,10 @@ export async function runQteSession(
           active = null;
         }
 
-        session.promiseSettled = true;
-        session.resolve("defeat");
+        if (!session.promiseSettled) {
+          session.promiseSettled = true;
+          session.resolve("defeat");
+        }
       })();
     };
 
