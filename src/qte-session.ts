@@ -1,6 +1,6 @@
 /**
  * 文件名：qte-session.ts
- * 作者：池水三两七
+ * 作者：池水三两升
  * 日期：2026-08-06
  * 版本：1.0.0
  * 描述：QTE 会话生命周期：UI 显隐、计时刷新、键位绑定、命中结算与清理
@@ -23,8 +23,10 @@ import {
 } from "./qte-logic";
 
 /**
- * UI 模块标识，必须与 extension.json 中 @extension id 一致，
+ * UI 模块标识，必须与 @extension({ id: "qte" }) 模块 id 一致，
  * 供 ctx.ui.show / ctx.ui.hide 使用。
+ *
+ * 注意：不是 extension.json 中的 id（extension.json.id 为 "qte-f9e583"）。
  */
 const UI_ID = "qte";
 
@@ -89,6 +91,12 @@ interface ActiveSession {
   resolve: (o: QteOutcome) => void;
   /** 是否已结算（防止重复 finish） */
   settled: boolean;
+  /** 是否仍允许在 finish 中跳转片段；abort/cancel 会将其置 false */
+  allowJump: boolean;
+  /** Promise 是否已 resolve，防止 finish/cancel/abort 重复 resolve */
+  promiseSettled: boolean;
+  /** 移除 abort 信号监听器的函数 */
+  removeAbortListener: (() => void) | null;
   /** 结算并清理：outcome 为结果，jump 为是否跳转片段 */
   finish: (outcome: QteOutcome, jump: boolean) => Promise<void>;
 }
@@ -161,6 +169,10 @@ async function cancelActive(ctx: ExtensionContext): Promise<void> {
 
   const prev = active;
   prev.settled = true;
+  prev.allowJump = false; // 阻止任何进行中的 finish 后续跳转
+
+  prev.removeAbortListener?.();
+  prev.removeAbortListener = null;
 
   if (prev.timer) {
     clearInterval(prev.timer);
@@ -178,8 +190,11 @@ async function cancelActive(ctx: ExtensionContext): Promise<void> {
     // 宿主隐藏 UI 失败不应阻断后续清理
   }
 
-  // 替换旧会话：以 defeat 结束，不触发任何片段跳转
-  prev.resolve("defeat");
+  // 替换旧会话：以 defeat 结束，不触发任何片段跳转，且只 resolve 一次
+  if (!prev.promiseSettled) {
+    prev.promiseSettled = true;
+    prev.resolve("defeat");
+  }
   active = null;
 }
 
@@ -243,6 +258,9 @@ export async function runQteSession(
       timer: null,
       resolve,
       settled: false,
+      allowJump: true,
+      promiseSettled: false,
+      removeAbortListener: null,
       finish: async () => {}, // 占位，下面立即覆盖
     };
 
@@ -257,6 +275,9 @@ export async function runQteSession(
         return;
       }
       session.settled = true;
+
+      session.removeAbortListener?.();
+      session.removeAbortListener = null;
 
       if (session.timer) {
         clearInterval(session.timer);
@@ -275,6 +296,11 @@ export async function runQteSession(
           hitCount: session.hitCount,
         });
         await sleep(220);
+
+        // 闪光期间若会话被 abort/cancel/替换，必须禁止后续跳转
+        if (!session.allowJump) {
+          jump = false;
+        }
       }
 
       try {
@@ -289,6 +315,11 @@ export async function runQteSession(
         active = null;
       }
 
+      // 隐藏 UI 期间仍可能被取消，再次检查是否允许跳转
+      if (!session.allowJump) {
+        jump = false;
+      }
+
       // 需要跳转时按 outcome 选择目标片段
       if (jump) {
         const { fragmentId, chapterId } = pickFragment(outcome, cfg);
@@ -300,7 +331,11 @@ export async function runQteSession(
         }
       }
 
-      session.resolve(outcome);
+      // 确保 Promise 只 resolve 一次
+      if (!session.promiseSettled) {
+        session.promiseSettled = true;
+        session.resolve(outcome);
+      }
     };
 
     // 将当前会话注册为全局活跃会话
@@ -413,10 +448,16 @@ export async function runQteSession(
      */
     const onAbort = () => {
       void (async () => {
-        if (active !== session || session.settled) {
+        // 即使 finish 已 settled，也要阻止它后续再跳转片段
+        session.allowJump = false;
+
+        if (active !== session || session.promiseSettled) {
           return;
         }
         session.settled = true;
+
+        session.removeAbortListener?.();
+        session.removeAbortListener = null;
 
         if (session.timer) {
           clearInterval(session.timer);
@@ -436,9 +477,13 @@ export async function runQteSession(
           active = null;
         }
 
+        session.promiseSettled = true;
         session.resolve("defeat");
       })();
     };
+
+    session.removeAbortListener = () =>
+      ctx.flow.signal.removeEventListener("abort", onAbort);
 
     if (ctx.flow.signal.aborted) {
       onAbort();
