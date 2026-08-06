@@ -10,6 +10,7 @@
  * start-qte
  *   mode: single
  *   key: KeyF
+ *   customKeyCode:   # 非空时优先于 key，如 Space / Digit1
  *   timeoutSec: 5
  *   posX: 50
  *   posY: 70
@@ -33,7 +34,13 @@ import type {
   QteMode,
 } from "./qte/qte-logic";
 import { QTE_STYLE_DEFAULTS } from "./qte/qte-style";
+import {
+  KEY_LETTER_PRESET_OPTIONS,
+  resolveQteKeyParam,
+} from "./qte/key-utils";
 import { QteEditorExtension } from "./qte-editor";
+// Studio 剧本编辑器内联卡片（DOM/Fiber hack，非正式 SDK）
+import "./studio/qte-inline-cards";
 
 /** 片段调用模式在检查器中的选项 */
 const CALL_MODE_OPTIONS = [
@@ -65,7 +72,7 @@ function readChapterId(params: Record<string, unknown>, key: string): string | u
 function buildQteConfigInput(params: Record<string, unknown>): QteConfigInput {
   return {
     mode: params.mode as QteMode,
-    key: typeof params.key === "string" ? params.key : "KeyF",
+    key: resolveQteKeyParam(params.key, params.customKeyCode),
     timeoutSec: typeof params.timeoutSec === "number" ? params.timeoutSec : 5,
     perfectStartSec: typeof params.perfectStartSec === "number" ? params.perfectStartSec : 0,
     perfectEndSec: typeof params.perfectEndSec === "number" ? params.perfectEndSec : 1,
@@ -167,7 +174,19 @@ class QteExtension extends Extension<QteOverlayProps> {
           { label: "连打", value: "mash" },
         ],
       },
-      key: { type: "string", label: "按键", default: "KeyF", required: true },
+      key: {
+        type: "enum",
+        label: "按键",
+        default: "KeyF",
+        required: true,
+        options: [...KEY_LETTER_PRESET_OPTIONS],
+      },
+      customKeyCode: {
+        type: "string",
+        label: "自定义键盘码",
+        default: "",
+        suggestions: { key: "qte-key-code" },
+      },
       timeoutSec: {
         type: "number",
         label: "总时限(秒)",
@@ -268,6 +287,17 @@ class QteExtension extends Extension<QteOverlayProps> {
     async run(ctx, params) {
       const allParams = params as Record<string, unknown>;
       await runQteSession(ctx, buildQteConfigInput(allParams));
+    },
+
+    /**
+     * 立即生效（不等动画 / 不等玩家操作）：与 skip 相同，按跳过规则结算。
+     *
+     * @param ctx - 扩展上下文
+     * @param params - 方法参数
+     */
+    async runImmediately(ctx, params) {
+      const allParams = params as Record<string, unknown>;
+      await skipQteSession(ctx, buildQteConfigInput(allParams));
     },
 
     /**
