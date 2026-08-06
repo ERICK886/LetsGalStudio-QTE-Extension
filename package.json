@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "watch": "vite build --watch"
+    "watch": "vite build --watch",
+    "test:logic": "npx --yes tsx --test src/key-utils.test.ts src/qte-logic.test.ts"
   },
   "peerDependencies": {
     "react": "^18.0.0",

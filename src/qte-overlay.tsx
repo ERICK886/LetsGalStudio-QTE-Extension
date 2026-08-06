@@ -378,7 +378,7 @@ export const QteOverlay: React.FC<QteOverlayProps> = () => {
               height: 120,
               borderRadius: "50%",
               background: "radial-gradient(circle, rgba(255, 214, 107, 0.7) 0%, rgba(255, 214, 107, 0) 70%)",
-              animation: "qte-perfect-flash 420ms ease-out forwards",
+              animation: "qte-perfect-flash 400ms ease-out forwards",
               pointerEvents: "none",
             }}
           />
