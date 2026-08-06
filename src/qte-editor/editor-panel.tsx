@@ -140,6 +140,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = () => {
   // 倒计时定时器引用，便于在停止 / 卸载时清理
   const tickTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // 闪光预览定时器引用，便于在重复触发 / 卸载时清理
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   /**
    * 倒计时播放 / 暂停副作用。
    *
@@ -171,6 +174,29 @@ export const EditorPanel: React.FC<EditorPanelProps> = () => {
   }, [playing]);
 
   /**
+   * 将本地预览提示文案同步到 `model.prompt`，使 `PreviewStage` 实时反映编辑结果。
+   *
+   * 仅在值变化时更新，避免无意义的重渲染。
+   */
+  useEffect(() => {
+    setModel((m) =>
+      m.prompt === localPrompt ? m : { ...m, prompt: localPrompt },
+    );
+  }, [localPrompt]);
+
+  /**
+   * 组件卸载时清理闪光预览定时器，避免 setState 于已卸载组件。
+   */
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current !== null) {
+        clearTimeout(flashTimerRef.current);
+        flashTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  /**
    * 字段变更处理：规范化 → 写入 qte 模块 settings → 本地乐观更新。
    *
    * 即便 `cross.set` 抛错（宿主未实现 / Player 端只读），也吞错继续，
@@ -198,9 +224,13 @@ export const EditorPanel: React.FC<EditorPanelProps> = () => {
    * 闪光时长与运行时 `qte-session` 的停留时间一致，便于编辑者预览真实效果。
    */
   const handleFlashPreview = (): void => {
+    if (flashTimerRef.current !== null) {
+      clearTimeout(flashTimerRef.current);
+    }
     setModel((prev) => ({ ...prev, showPerfectFlash: true }));
-    setTimeout(() => {
+    flashTimerRef.current = setTimeout(() => {
       setModel((prev) => ({ ...prev, showPerfectFlash: false }));
+      flashTimerRef.current = null;
     }, FLASH_DURATION_MS);
   };
 
