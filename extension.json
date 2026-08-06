@@ -1,0 +1,9 @@
+{
+  "id": "qte-f9e583",
+  "name": "游戏运行时QTE",
+  "description": "用于游戏内的QTE",
+  "author": "池水三两升",
+  "version": "0.1.0",
+  "entry": "dist/index.js",
+  "sdkVersion": ">=1.9.2-beta"
+}
