@@ -2,22 +2,24 @@
  * 文件名：demo-snapshot.ts
  * 作者：池水三两升
  * 日期：2026-08-06
- * 版本：1.0.0
+ * 版本：1.0.1
  * 描述：QTE 编辑器演示快照纯逻辑 —— 默认 model、倒计时 tick、图层→样式字段映射
  *
  * 本模块不含 React / DOM，供编辑器预览面板与后续 UI 复用。
- * `QteEditorLayerId` 与 `QteVisualHighlightLayer` 语义一致，在此 re-export 别名供 editor 使用。
+ * `QteEditorLayerId` 直接复用 `QteVisualHighlightLayer` 的非 null 形态，
+ * 避免在两处维护同一份字符串字面量联合。
  */
 
-import type { QteVisualModel } from "../qte-visual";
+import type { QteVisualModel, QteVisualHighlightLayer } from "../qte-visual";
 import type { QteStyleFieldKey } from "../qte-style";
 
 /**
  * 编辑器可选中的视觉层标识（不含 null）。
  *
- * 与 `QteVisualHighlightLayer` 的非 null 分支一一对应。
+ * 直接取 `QteVisualHighlightLayer` 去掉 null 后的形态，
+ * 与运行时高亮层语义保持一一对应，避免重复声明字符串字面量联合。
  */
-export type QteEditorLayerId = "outer" | "perfect" | "button" | "prompt" | "flash";
+export type QteEditorLayerId = NonNullable<QteVisualHighlightLayer>;
 
 /**
  * 编辑器图层面板展示顺序与中文标签。
@@ -128,5 +130,7 @@ export function fieldsForLayer(
       return [];
     case "flash":
       return ["flashColor"];
+    default:
+      return [];
   }
 }

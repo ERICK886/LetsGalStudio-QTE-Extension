@@ -22,7 +22,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { useExtensionContext } from "@avg-studio/sdk";
+import { useExtensionContext, type ExtensionProps } from "@avg-studio/sdk";
 import {
   QTE_STYLE_DEFAULTS,
   normalizeQteStyleField,
@@ -84,13 +84,10 @@ function readStyle(ctx: {
 /**
  * EditorPanel 的 props 类型。
  *
- * 必须继承自 SDK 的 `ExtensionProps`，与 `QteEditorExtension.render()`
+ * 继承自 SDK 的 `ExtensionProps`，与 `QteEditorExtension.render()`
  * 返回的 `props` 形状对齐。当前无额外字段。
  */
-export interface EditorPanelProps {
-  /** 透传自 Extension.data，预留扩展位 */
-  readonly id?: string;
-}
+export interface EditorPanelProps extends ExtensionProps {}
 
 /** 倒计时 tick 间隔（毫秒） */
 const TICK_INTERVAL_MS = 50;
@@ -324,7 +321,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = () => {
         <PreviewStage
           style={style}
           model={model}
-          highlightLayer={selectedLayer}
+          highlightLayer={null}
           fullBleed
         />
       </div>

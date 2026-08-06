@@ -171,14 +171,55 @@ function asClampedNumber(
   return Math.min(max, Math.max(min, n));
 }
 
+/** 颜色类样式字段键（与 `QTE_COLOR_FIELDS` 集合保持一致） */
+type QteColorStyleFieldKey =
+  | "outerRingColor"
+  | "perfectColor"
+  | "buttonBgColor"
+  | "buttonTextColor"
+  | "flashColor";
+
+/** 数值类样式字段键（与 `QTE_STYLE_LIMITS` 键一致） */
+type QteNumericStyleFieldKey = keyof typeof QTE_STYLE_LIMITS;
+
 /** 颜色类样式字段集合，用于 normalizeQteStyleField 分支判断 */
-const QTE_COLOR_FIELDS = new Set<QteStyleFieldKey>([
+const QTE_COLOR_FIELDS: ReadonlySet<QteColorStyleFieldKey> = new Set<QteColorStyleFieldKey>([
   "outerRingColor",
   "perfectColor",
   "buttonBgColor",
   "buttonTextColor",
   "flashColor",
 ]);
+
+/**
+ * 判断样式字段是否为颜色字段。
+ *
+ * 类型守卫：返回 true 时把 `field` 窄化为 `QteColorStyleFieldKey`，
+ * 使后续 `QTE_STYLE_DEFAULTS[field]` 被识别为 `string`，避免 TS2345。
+ *
+ * @param field - 样式字段键
+ * @returns 若为颜色字段则窄化为 `QteColorStyleFieldKey`
+ */
+function isColorStyleField(
+  field: QteStyleFieldKey,
+): field is QteColorStyleFieldKey {
+  return QTE_COLOR_FIELDS.has(field as QteColorStyleFieldKey);
+}
+
+/**
+ * 判断样式字段是否为数值字段（在 `QTE_STYLE_LIMITS` 中有 min/max）。
+ *
+ * 类型守卫：返回 true 时把 `field` 窄化为 `QteNumericStyleFieldKey`，
+ * 使后续 `QTE_STYLE_DEFAULTS[field]` 被识别为 `number`，避免 TS2345。
+ *
+ * @param field - 样式字段键
+ * @returns 若为数值字段则窄化为 `QteNumericStyleFieldKey`
+ */
+function isNumericStyleField(
+  field: QteStyleFieldKey,
+): field is QteNumericStyleFieldKey {
+  return field in QTE_STYLE_LIMITS;
+}
 
 /**
  * 将单个样式字段的原始输入规范化为可写入 settings 的值。
@@ -198,17 +239,23 @@ export function normalizeQteStyleField(
   field: QteStyleFieldKey,
   value: unknown,
 ): string | number {
-  if (QTE_COLOR_FIELDS.has(field)) {
+  if (isColorStyleField(field)) {
     return asColor(value, QTE_STYLE_DEFAULTS[field]);
   }
 
-  const limits = QTE_STYLE_LIMITS[field as keyof typeof QTE_STYLE_LIMITS];
-  return asClampedNumber(
-    value,
-    QTE_STYLE_DEFAULTS[field],
-    limits.min,
-    limits.max,
-  );
+  if (isNumericStyleField(field)) {
+    const limits = QTE_STYLE_LIMITS[field];
+    return asClampedNumber(
+      value,
+      QTE_STYLE_DEFAULTS[field],
+      limits.min,
+      limits.max,
+    );
+  }
+
+  // 理论不可达：QteStyleFieldKey 仅含颜色与数值两类字段。
+  // 兜底返回原值，避免未来新增字段时静默吞错。
+  return value as string | number;
 }
 
 /**
