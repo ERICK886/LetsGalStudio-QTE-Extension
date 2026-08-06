@@ -29,6 +29,7 @@ import { QteOverlay, type QteOverlayProps } from "./qte-overlay";
 import { runQteSession, skipQteSession } from "./qte-session";
 import type { QteFragmentCallMode, QteMode } from "./qte-logic";
 import { QTE_STYLE_DEFAULTS } from "./qte-style";
+import { QteEditorExtension } from "./qte-editor";
 
 /** 片段调用模式在检查器中的选项 */
 const CALL_MODE_OPTIONS = [
@@ -278,4 +279,5 @@ class QteExtension extends Extension<QteOverlayProps> {
   });
 }
 
-export default QteExtension;
+export { QteExtension, QteEditorExtension };
+export default [QteExtension, QteEditorExtension];
