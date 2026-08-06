@@ -265,7 +265,11 @@ export async function runQteSession(
     };
 
     /**
-     * 结算会话：停止计时、隐藏 UI、按需跳转片段、resolve Promise。
+     * 结算会话：停止计时、隐藏 UI、resolve Promise、按需跳转片段。
+     *
+     * 注意：Promise 的 resolve 必须在 unsafe_goToFragment 之前执行。
+     * 若宿主跳转抛出异常，也不能让 QTE 返回的 Promise 处于永久挂起状态，
+     * 否则调用方会软锁。跳转错误仅被吞掉，不影响会话结果。
      *
      * @param outcome - 判定结果
      * @param jump - 是否按 outcome 跳转对应片段
@@ -317,21 +321,26 @@ export async function runQteSession(
         jump = false;
       }
 
-      // 需要跳转时按 outcome 选择目标片段
-      if (jump) {
-        const { fragmentId, chapterId } = pickFragment(outcome, cfg);
-        if (fragmentId) {
-          ctx.flow.unsafe_goToFragment(
-            fragmentId,
-            chapterId ? { chapterId } : undefined,
-          );
-        }
-      }
-
-      // 确保 Promise 只 resolve 一次
+      // 必须先 resolve Promise，再尝试跳转片段；
+      // 这样即使 unsafe_goToFragment 抛出，调用方也不会被挂起。
       if (!session.promiseSettled) {
         session.promiseSettled = true;
         session.resolve(outcome);
+      }
+
+      // 需要跳转时按 outcome 选择目标片段，并吞掉宿主跳转错误
+      if (jump) {
+        try {
+          const { fragmentId, chapterId } = pickFragment(outcome, cfg);
+          if (fragmentId) {
+            ctx.flow.unsafe_goToFragment(
+              fragmentId,
+              chapterId ? { chapterId } : undefined,
+            );
+          }
+        } catch {
+          // 忽略宿主跳转错误，避免抛入未完成的 Promise 造成软锁
+        }
       }
 
       // 保留 abort 监听直至结算完成，闪光期间 abort 仍可禁止跳转
@@ -423,6 +432,12 @@ export async function runQteSession(
         // 宿主显示 UI 失败不应阻断 QTE 继续运行
       }
 
+      // ui.show 是异步的，等待期间会话可能被 abort/cancel/替换；
+      // 若已 settlement 或不再是当前活跃会话，则不再绑定输入与计时器。
+      if (session.settled || active !== session) {
+        return;
+      }
+
       const unbindShortcut = ctx.input.bindShortcut(cfg.key, () => {
         if (active !== session || session.settled) {
           return;
@@ -445,7 +460,11 @@ export async function runQteSession(
     void start();
 
     /**
-     * 宿主发送 abort 信号时：清理 UI 与键位，以 defeat 结束 Promise，**不跳转片段**。
+     * 宿主发送 abort 信号时：禁止后续跳转，并清理 UI 与键位。
+     *
+     * 若 finish 尚未开始，则以 defeat 结束 Promise 且**不跳转片段**；
+     * 若 finish 已在进行中（如 Perfect 闪光期间），则仅禁止跳转并移除监听，
+     * 不重复 resolve，把收尾工作交给正在执行的 finish。
      */
     const onAbort = () => {
       void (async () => {
