@@ -2,8 +2,11 @@
  * 文件名：qte-style.ts
  * 作者：池水三两升
  * 日期：2026-08-06
- * 版本：1.0.0
+ * 版本：1.0.1
  * 描述：QTE 视觉样式默认值与从项目设置解析运行时样式
+ *
+ * 注意：Extension 模块 id 为 `qte` 时，宿主常把设置键存成 `qte.fieldName`。
+ * 解析时必须同时兼容「无前缀」与「uiId.前缀」两种快照形态。
  */
 
 /**
@@ -42,8 +45,60 @@ export const QTE_STYLE_DEFAULTS: QteResolvedStyle = {
   buttonSize: 88,
 };
 
+/** 模块内 settings 声明所在的 uiId（与 @extension({ id: "qte" }) 一致） */
+export const QTE_SETTINGS_UI_ID = "qte";
+
 /**
- * 将未知值解析为非空颜色字符串。
+ * 从 settings 快照中按字段名取值，兼容多种键形态。
+ *
+ * 查找顺序：
+ * 1. 裸键 `field`
+ * 2. `qte.field`（模块 scope 前缀）
+ * 3. 任意以 `.field` 结尾的键
+ * 4. 嵌套对象 `snapshot.qte.field`
+ *
+ * @param snapshot - useSnapshot / snapshot() 结果
+ * @param field - schema 字段名，如 `"buttonBgColor"`
+ * @returns 找到的原始值；未找到则为 undefined
+ */
+export function pickSettingValue(
+  snapshot: Record<string, unknown> | null | undefined,
+  field: string,
+): unknown {
+  if (!snapshot) {
+    return undefined;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(snapshot, field)) {
+    return snapshot[field];
+  }
+
+  const prefixed = `${QTE_SETTINGS_UI_ID}.${field}`;
+  if (Object.prototype.hasOwnProperty.call(snapshot, prefixed)) {
+    return snapshot[prefixed];
+  }
+
+  for (const [key, value] of Object.entries(snapshot)) {
+    if (key.endsWith(`.${field}`)) {
+      return value;
+    }
+  }
+
+  const nested = snapshot[QTE_SETTINGS_UI_ID];
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const bag = nested as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(bag, field)) {
+      return bag[field];
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * 将未知值解析为可用的 CSS 颜色字符串。
+ *
+ * 兼容普通字符串，以及 Studio 偶发对象 `{ hex }` / `{ r,g,b,a }`。
  *
  * @param value - 设置或快照中的原始值
  * @param fallback - 回退色
@@ -53,6 +108,25 @@ function asColor(value: unknown, fallback: string): string {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
   }
+
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.hex === "string" && obj.hex.trim().length > 0) {
+      return obj.hex.trim();
+    }
+    if (typeof obj.color === "string" && obj.color.trim().length > 0) {
+      return obj.color.trim();
+    }
+    if (
+      typeof obj.r === "number" &&
+      typeof obj.g === "number" &&
+      typeof obj.b === "number"
+    ) {
+      const a = typeof obj.a === "number" ? obj.a : 1;
+      return `rgba(${Math.round(obj.r)}, ${Math.round(obj.g)}, ${Math.round(obj.b)}, ${a})`;
+    }
+  }
+
   return fallback;
 }
 
@@ -83,24 +157,49 @@ function asClampedNumber(
  *
  * @param snapshot - `ctx.settings.snapshot()` 或 `useSnapshot()` 的结果
  * @returns 合并默认值后的运行时样式
- *
- * @example
- * const style = resolveQteStyle(ctx.settings.snapshot());
  */
 export function resolveQteStyle(
   snapshot: Record<string, unknown> | null | undefined,
 ): QteResolvedStyle {
-  const s = snapshot ?? {};
-
   return {
-    outerRingColor: asColor(s.outerRingColor, QTE_STYLE_DEFAULTS.outerRingColor),
-    perfectColor: asColor(s.perfectColor, QTE_STYLE_DEFAULTS.perfectColor),
-    buttonBgColor: asColor(s.buttonBgColor, QTE_STYLE_DEFAULTS.buttonBgColor),
-    buttonTextColor: asColor(s.buttonTextColor, QTE_STYLE_DEFAULTS.buttonTextColor),
-    flashColor: asColor(s.flashColor, QTE_STYLE_DEFAULTS.flashColor),
-    ringDiameter: asClampedNumber(s.ringDiameter, QTE_STYLE_DEFAULTS.ringDiameter, 120, 600),
-    ringStroke: asClampedNumber(s.ringStroke, QTE_STYLE_DEFAULTS.ringStroke, 2, 20),
-    buttonSize: asClampedNumber(s.buttonSize, QTE_STYLE_DEFAULTS.buttonSize, 48, 200),
+    outerRingColor: asColor(
+      pickSettingValue(snapshot, "outerRingColor"),
+      QTE_STYLE_DEFAULTS.outerRingColor,
+    ),
+    perfectColor: asColor(
+      pickSettingValue(snapshot, "perfectColor"),
+      QTE_STYLE_DEFAULTS.perfectColor,
+    ),
+    buttonBgColor: asColor(
+      pickSettingValue(snapshot, "buttonBgColor"),
+      QTE_STYLE_DEFAULTS.buttonBgColor,
+    ),
+    buttonTextColor: asColor(
+      pickSettingValue(snapshot, "buttonTextColor"),
+      QTE_STYLE_DEFAULTS.buttonTextColor,
+    ),
+    flashColor: asColor(
+      pickSettingValue(snapshot, "flashColor"),
+      QTE_STYLE_DEFAULTS.flashColor,
+    ),
+    ringDiameter: asClampedNumber(
+      pickSettingValue(snapshot, "ringDiameter"),
+      QTE_STYLE_DEFAULTS.ringDiameter,
+      120,
+      600,
+    ),
+    ringStroke: asClampedNumber(
+      pickSettingValue(snapshot, "ringStroke"),
+      QTE_STYLE_DEFAULTS.ringStroke,
+      2,
+      20,
+    ),
+    buttonSize: asClampedNumber(
+      pickSettingValue(snapshot, "buttonSize"),
+      QTE_STYLE_DEFAULTS.buttonSize,
+      48,
+      200,
+    ),
   };
 }
 
@@ -118,9 +217,7 @@ export function clampPercent(value: unknown, fallback = 50): number {
 /**
  * 根据主色生成略透明的「暗淡」边框色（Perfect 窗外态）。
  *
- * 若无法解析 hex，则原样返回。
- *
- * @param color - 主色（支持 #RGB / #RRGGBB / #RRGGBBAA）
+ * @param color - 主色
  * @returns 带透明度的颜色或原色
  */
 export function dimColor(color: string): string {
@@ -146,7 +243,7 @@ export function glowShadow(color: string, strong: boolean): string {
 }
 
 /**
- * 将 #RRGGBB / #RRGGBBAA 转为 rgba()。
+ * 将 #RGB / #RRGGBB / #RRGGBBAA 转为 rgba()。
  *
  * @param color - 十六进制颜色
  * @param alpha - 覆盖透明度 0–1
@@ -154,6 +251,12 @@ export function glowShadow(color: string, strong: boolean): string {
  */
 export function colorToRgba(color: string, alpha: number): string {
   const hex = color.trim();
+  const short = /^#([0-9a-fA-F]{3})([0-9a-fA-F])?$/.exec(hex);
+  if (short) {
+    const [r, g, b] = short[1]!.split("").map((c) => parseInt(c + c, 16));
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
   const m = /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})?$/.exec(hex);
   if (!m) {
     return color;

@@ -110,8 +110,35 @@ function buttonHoverColor(bg: string): string {
  */
 export const QteOverlay: React.FC<QteOverlayProps> = () => {
   const ctx = useExtensionContext();
+
+  /**
+   * 逐字段 useValue：宿主会按模块 uiId 自动补前缀（如 qte.buttonBgColor），
+   * 比只读 useSnapshot 裸键更可靠。
+   */
+  const [outerRingColor] = ctx.settings.useValue<string>("outerRingColor");
+  const [perfectColor] = ctx.settings.useValue<string>("perfectColor");
+  const [buttonBgColor] = ctx.settings.useValue<string>("buttonBgColor");
+  const [buttonTextColor] = ctx.settings.useValue<string>("buttonTextColor");
+  const [flashColor] = ctx.settings.useValue<string>("flashColor");
+  const [ringDiameter] = ctx.settings.useValue<number>("ringDiameter");
+  const [ringStroke] = ctx.settings.useValue<number>("ringStroke");
+  const [buttonSize] = ctx.settings.useValue<number>("buttonSize");
+
+  /** 再合并 snapshot，兜底兼容其它键形态 */
   const settingsSnap = ctx.settings.useSnapshot();
-  const style: QteResolvedStyle = resolveQteStyle(settingsSnap);
+  const style: QteResolvedStyle = resolveQteStyle({
+    ...settingsSnap,
+    // useValue 已按 uiId 解好前缀；写入裸键供 resolve 优先读取
+    ...(outerRingColor !== undefined ? { outerRingColor } : {}),
+    ...(perfectColor !== undefined ? { perfectColor } : {}),
+    ...(buttonBgColor !== undefined ? { buttonBgColor } : {}),
+    ...(buttonTextColor !== undefined ? { buttonTextColor } : {}),
+    ...(flashColor !== undefined ? { flashColor } : {}),
+    ...(ringDiameter !== undefined ? { ringDiameter } : {}),
+    ...(ringStroke !== undefined ? { ringStroke } : {}),
+    ...(buttonSize !== undefined ? { buttonSize } : {}),
+  });
+
 
   const [, forceUpdate] = useState(0);
 
