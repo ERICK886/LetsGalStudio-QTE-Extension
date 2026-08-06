@@ -4,6 +4,6 @@
   "description": "剧情限时按键挑战：单键/连打、Perfect/Normal/Defeat跳转，含百分比定位与样式编辑器。",
   "author": "池水三两升",
   "version": "1.0.0",
-  "entry": "dist/index.js",
+  "entry": "dist/index.mjs",
   "sdkVersion": ">=1.9.2-beta"
 }

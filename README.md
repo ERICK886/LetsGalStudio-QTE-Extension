@@ -54,7 +54,7 @@ npm run build
 
 （若仓库有 `pnpm-lock.yaml`，也可用 `pnpm install`。）
 
-Studio 会加载 `extension.json` 里写的 `dist/index.js`。  
+Studio 会加载 `extension.json` 里写的 `dist/index.mjs`。  
 改完源码后：先 `build`（或开着 `npm run watch`），再在 Studio 里重载扩展；不行就重启 Preview。
 
 ## 3. 五分钟做出第一次能用的 QTE
@@ -236,7 +236,7 @@ Action：**调用方法** → 扩展 `ink.zenly.qte-f9e583` → **开始 QTE**�
 **改完没生效时依次试：**
 
 1. 确认加载的是本扩展包 `ink.zenly.qte-f9e583`  
-2. 源码改过的话先 `build`，确认 `dist/index.js` 已更新  
+2. 源码改过的话先 `build`，确认 `dist/index.mjs` 已更新  
 3. Studio 重载扩展 / 重启 Preview  
 4. 样式：确认改的是 **QTE** 设置（或样式编辑器），不是别的扩展  
 5. 位置不对：查该次调用的 `posX` / `posY`，不是项目设置  
