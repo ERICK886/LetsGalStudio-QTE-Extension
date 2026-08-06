@@ -26,8 +26,17 @@ dist/              build 产物（npm run build 生成）
 
 ## 开发/构建命令
 
+安装依赖（项目含 `pnpm-lock.yaml` 时优先使用 pnpm；也可使用 npm）：
+
 ```bash
-npm install           # 安装 react / vite + 建立 sdk symlink
+pnpm install          # 推荐：安装 react / vite + 建立 sdk symlink
+# 或
+npm install           # 同上
+```
+
+构建与测试（无论用 pnpm 还是 npm 安装，以下 npm scripts 均可用）：
+
+```bash
 npm run build         # 构建到 dist/index.js
 npm run watch         # 监听 src/ 改动并增量 build 到 dist/
 npm run test:logic    # 运行逻辑单元测试：key-utils + qte-logic

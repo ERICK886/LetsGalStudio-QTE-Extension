@@ -107,14 +107,14 @@ class QteExtension extends Extension<QteOverlayProps> {
   /**
    * 剧本方法：启动 QTE。
    *
-   * 在 Studio 的「调用方法」picker 中显示为「开启 QTE」，支持：
+   * 在 Studio 的「调用方法」picker 中显示为「开始 QTE」，支持：
    * - 单键限时模式 / 连打模式
    * - Perfect 时间窗口与对应片段
    * - 失败/跳过/按错键等分支
    */
   static startQte = method({
     id: "start-qte",
-    title: "开启 QTE",
+    title: "开始 QTE",
     description: "单键或连打限时 QTE，结果可为 perfect / normal / defeat",
     schema: {
       mode: {
