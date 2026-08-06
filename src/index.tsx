@@ -109,7 +109,7 @@ class QteExtension extends Extension<QteOverlayProps> {
     ringDiameter: s
       .number("环直径(px)")
       .default(QTE_STYLE_DEFAULTS.ringDiameter)
-      .range(120, 600)
+      .range(64, 600)
       .step(1)
       .describe("外环基准直径，实际大小随倒计时缩放"),
     ringStroke: s

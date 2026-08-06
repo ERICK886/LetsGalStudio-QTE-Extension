@@ -21,6 +21,10 @@ import {
   type QteNormalizedConfig,
   type QteOutcome,
 } from "./qte-logic";
+import {
+  readQteStyleFromContext,
+  type QteResolvedStyle,
+} from "./qte-style";
 
 /**
  * UI 模块标识，必须与 @extension({ id: "qte" }) 模块 id 一致，
@@ -64,6 +68,11 @@ export interface QteUiSnapshot {
   posX: number;
   /** QTE 中心垂直位置（舞台高度百分比 0–100） */
   posY: number;
+  /**
+   * 启动会话时从项目设置解析的样式快照。
+   * Overlay 优先使用此字段，避免运行时 settings 键名不一致导致回落默认值。
+   */
+  style: QteResolvedStyle;
 }
 
 /** 订阅 UI 快照变化的监听器类型 */
@@ -83,6 +92,8 @@ let snapshot: QteUiSnapshot | null = null;
 interface ActiveSession {
   /** 规范化后的配置 */
   cfg: QteNormalizedConfig;
+  /** 启动时解析的样式（写入每帧 snapshot） */
+  style: QteResolvedStyle;
   /** 会话启动时刻（performance.now()） */
   startedAt: number;
   /** 当前有效命中次数 */
@@ -211,7 +222,18 @@ async function cancelActive(ctx: ExtensionContext): Promise<void> {
  * @param cfg - 规范化配置
  * @returns 完整的 UI 快照
  */
-function buildSnapshot(session: ActiveSession, cfg: QteNormalizedConfig): QteUiSnapshot {
+/**
+ * 根据会话状态构造完整 UI 快照。
+ *
+ * @param session - 当前会话
+ * @param patch - 覆盖字段（如 remainingSec / showPerfectFlash）
+ * @returns 完整的 UI 快照
+ */
+function buildSnapshot(
+  session: ActiveSession,
+  patch: Partial<QteUiSnapshot> = {},
+): QteUiSnapshot {
+  const cfg = session.cfg;
   const elapsed = (performance.now() - session.startedAt) / 1000;
   return {
     running: true,
@@ -228,6 +250,8 @@ function buildSnapshot(session: ActiveSession, cfg: QteNormalizedConfig): QteUiS
     showPerfectFlash: false,
     posX: cfg.posX,
     posY: cfg.posY,
+    style: session.style,
+    ...patch,
   };
 }
 
@@ -251,6 +275,8 @@ export async function runQteSession(
 
   const key = normalizeShortcut(input.key);
   const cfg = normalizeQteConfig({ ...input, key });
+  /** 启动瞬间从项目设置解析样式，写入会话，保证 Overlay 与配置面板一致 */
+  const style = readQteStyleFromContext(ctx);
 
   return new Promise<QteOutcome>((resolve) => {
     const startedAt = performance.now();
@@ -258,6 +284,7 @@ export async function runQteSession(
     // 先创建会话对象，再把 finish 绑定到对象自身，避免闭包指向全局 active 导致误伤其它会话
     const session: ActiveSession = {
       cfg,
+      style,
       startedAt,
       hitCount: 0,
       unbindKey: null,
@@ -296,12 +323,13 @@ export async function runQteSession(
       // Perfect 命中时先显示闪光，短暂停留后再隐藏 UI，给玩家明确反馈
       if (outcome === "perfect") {
         const elapsed = (performance.now() - startedAt) / 1000;
-        setSnapshot({
-          ...(snapshot ?? buildSnapshot(session, cfg)),
-          showPerfectFlash: true,
-          remainingSec: Math.max(0, cfg.timeoutSec - elapsed),
-          hitCount: session.hitCount,
-        });
+        setSnapshot(
+          buildSnapshot(session, {
+            showPerfectFlash: true,
+            remainingSec: Math.max(0, cfg.timeoutSec - elapsed),
+            hitCount: session.hitCount,
+          }),
+        );
         await sleep(400);
 
         // 闪光期间若会话被 abort/cancel/替换，必须禁止后续跳转
@@ -368,22 +396,13 @@ export async function runQteSession(
       const elapsed = (performance.now() - startedAt) / 1000;
       const remaining = Math.max(0, cfg.timeoutSec - elapsed);
 
-      setSnapshot({
-        running: true,
-        keyLabel: displayKeyLabel(cfg.key),
-        prompt: cfg.prompt,
-        mode: cfg.mode,
-        mashCount: cfg.mashCount,
-        hitCount: session.hitCount,
-        timeoutSec: cfg.timeoutSec,
-        remainingSec: remaining,
-        perfectStartSec: cfg.perfectStartSec,
-        perfectEndSec: cfg.perfectEndSec,
-        perfectEnabled: cfg.perfectEnabled,
-        showPerfectFlash: false,
-        posX: cfg.posX,
-        posY: cfg.posY,
-      });
+      setSnapshot(
+        buildSnapshot(session, {
+          remainingSec: remaining,
+          hitCount: session.hitCount,
+          showPerfectFlash: false,
+        }),
+      );
 
       if (remaining <= 0) {
         // 超时：按 defeat 结算并跳转 defeat 片段
@@ -419,22 +438,13 @@ export async function runQteSession(
      */
     const start = async () => {
       // 初始快照：在 UI 显示前设置，避免 overlay 第一次渲染时拿到 null
-      setSnapshot({
-        running: true,
-        keyLabel: displayKeyLabel(cfg.key),
-        prompt: cfg.prompt,
-        mode: cfg.mode,
-        mashCount: cfg.mashCount,
-        hitCount: 0,
-        timeoutSec: cfg.timeoutSec,
-        remainingSec: cfg.timeoutSec,
-        perfectStartSec: cfg.perfectStartSec,
-        perfectEndSec: cfg.perfectEndSec,
-        perfectEnabled: cfg.perfectEnabled,
-        showPerfectFlash: false,
-        posX: cfg.posX,
-        posY: cfg.posY,
-      });
+      setSnapshot(
+        buildSnapshot(session, {
+          hitCount: 0,
+          remainingSec: cfg.timeoutSec,
+          showPerfectFlash: false,
+        }),
+      );
 
       try {
         await ctx.ui.show(UI_ID, {}, { size: "(100%, 100%)", position: "(0, 0)", interactable: true });

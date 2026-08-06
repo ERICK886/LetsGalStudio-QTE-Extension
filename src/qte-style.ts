@@ -111,6 +111,9 @@ function asColor(value: unknown, fallback: string): string {
 
   if (value && typeof value === "object") {
     const obj = value as Record<string, unknown>;
+    if (typeof obj.value === "string" && obj.value.trim().length > 0) {
+      return obj.value.trim();
+    }
     if (typeof obj.hex === "string" && obj.hex.trim().length > 0) {
       return obj.hex.trim();
     }
@@ -145,7 +148,11 @@ function asClampedNumber(
   min: number,
   max: number,
 ): number {
-  const n = typeof value === "number" ? value : Number(value);
+  let raw: unknown = value;
+  if (raw && typeof raw === "object" && "value" in (raw as object)) {
+    raw = (raw as { value: unknown }).value;
+  }
+  const n = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(n)) {
     return fallback;
   }
@@ -185,7 +192,7 @@ export function resolveQteStyle(
     ringDiameter: asClampedNumber(
       pickSettingValue(snapshot, "ringDiameter"),
       QTE_STYLE_DEFAULTS.ringDiameter,
-      120,
+      64,
       600,
     ),
     ringStroke: asClampedNumber(
@@ -202,6 +209,72 @@ export function resolveQteStyle(
     ),
   };
 }
+
+/**
+ * 从 ExtensionContext 读取并解析 QTE 样式。
+ *
+ * 同时尝试多种键形态与 API，避免宿主把设置存成裸键 / `qte.xxx` 时读不到：
+ * - snapshot + pickSettingValue
+ * - settings.get("field")（scoped 时会自动加 uiId 前缀）
+ * - settings.get("qte.field")（显式完整路径，跳过再补前缀）
+ * - settings.cross.get("qte", "field")
+ *
+ * @param ctx - 扩展上下文
+ * @returns 合并默认值后的运行时样式
+ */
+export function readQteStyleFromContext(ctx: {
+  settings: {
+    snapshot(): Record<string, unknown>;
+    get<T = unknown>(key: string): T | undefined;
+    cross: {
+      get<T = unknown>(uiId: string, key: string): T | undefined;
+    };
+  };
+}): QteResolvedStyle {
+  const snap = ctx.settings.snapshot() ?? {};
+  const merged: Record<string, unknown> = { ...snap };
+
+  const fields = [
+    "outerRingColor",
+    "perfectColor",
+    "buttonBgColor",
+    "buttonTextColor",
+    "flashColor",
+    "ringDiameter",
+    "ringStroke",
+    "buttonSize",
+  ] as const;
+
+  for (const field of fields) {
+    if (pickSettingValue(merged, field) !== undefined) {
+      continue;
+    }
+
+    const fromGet = ctx.settings.get(field);
+    if (fromGet !== undefined) {
+      merged[field] = fromGet;
+      continue;
+    }
+
+    const fromPrefixed = ctx.settings.get(`${QTE_SETTINGS_UI_ID}.${field}`);
+    if (fromPrefixed !== undefined) {
+      merged[field] = fromPrefixed;
+      continue;
+    }
+
+    try {
+      const fromCross = ctx.settings.cross.get(QTE_SETTINGS_UI_ID, field);
+      if (fromCross !== undefined) {
+        merged[field] = fromCross;
+      }
+    } catch {
+      // cross 在部分宿主上可能不可用，忽略
+    }
+  }
+
+  return resolveQteStyle(merged);
+}
+
 
 /**
  * 将 0–100 的百分比坐标裁剪到合法区间。
