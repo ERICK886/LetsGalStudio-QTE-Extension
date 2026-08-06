@@ -2,7 +2,7 @@
  * 文件名：preview-stage.tsx
  * 作者：池水三两升
  * 日期：2026-08-06
- * 版本：1.0.0
+ * 版本：1.0.1
  * 描述：QTE 编辑器 —— 预览舞台（中央子面板）
  *
  * 在编辑器中央渲染一个 QTE 预览舞台：
@@ -12,14 +12,18 @@
  * 舞台内部直接复用 `QteVisual`，传入 `interactive={false}` 让其仅作展示，
  * `pos` 来自 `model.posX/posY`（演示 model 固定 50/50，不支持拖拽）。
  * `highlightLayer` 透传给 `QteVisual`，用于在舞台上高亮当前选中层。
+ *
+ * 注意：`QteVisual` 根节点为 `position:absolute; inset:0`，**不会撑开父级**。
+ * 舞台框必须给出明确宽高（不能仅靠 aspect-ratio + width/height:auto），
+ * 否则设计页会出现「只有网格、看不到 QTE」的空画布。
  */
 
 import React from "react";
 import {
   QteVisual,
   type QteVisualModel,
-} from "../qte-visual";
-import type { QteResolvedStyle } from "../qte-style";
+} from "../qte/qte-visual";
+import type { QteResolvedStyle } from "../qte/qte-style";
 import type { QteEditorLayerId } from "./demo-snapshot";
 
 /**
@@ -52,7 +56,7 @@ const GRID_SIZE_PX = 24;
 /**
  * 预览舞台。
  *
- * - 默认模式：外层网格背景，内层 16:9 居中舞台框（maxWidth/maxHeight 90%）
+ * - 默认模式：外层网格背景，内层 16:9 居中舞台框（占可用区域约 90%）
  * - `fullBleed`：外层无网格、无 padding；舞台框无边框，铺满整个区域
  *
  * 舞台框内部挂载 `QteVisual`，`interactive={false}`，`pos` 取自 model。
@@ -78,24 +82,42 @@ export const PreviewStage: React.FC<PreviewStageProps> = ({
         position: "relative",
         width: "100%",
         height: "100%",
+        minHeight: 0,
         background: fullBleed ? "#0e0e12" : "#101014",
         backgroundImage: fullBleed ? undefined : GRID_BACKGROUND,
-        backgroundSize: fullBleed ? undefined : `${GRID_SIZE_PX}px ${GRID_SIZE_PX}px`,
+        backgroundSize: fullBleed
+          ? undefined
+          : `${GRID_SIZE_PX}px ${GRID_SIZE_PX}px`,
         overflow: "hidden",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: fullBleed ? 0 : 16,
+        boxSizing: "border-box",
       }}
     >
+      {/*
+        舞台框必须有确定尺寸：QteVisual 绝对定位不贡献布局高度。
+        设计页用 width:90% + aspect-ratio 撑开；预览页 100% 铺满。
+      */}
       <div
         style={{
           position: "relative",
-          aspectRatio: "16 / 9",
-          width: fullBleed ? "100%" : "auto",
-          maxWidth: fullBleed ? "none" : "90%",
-          maxHeight: fullBleed ? "none" : "90%",
-          height: fullBleed ? "100%" : "auto",
+          boxSizing: "border-box",
+          ...(fullBleed
+            ? {
+                width: "100%",
+                height: "100%",
+              }
+            : {
+                width: "90%",
+                maxWidth: "100%",
+                aspectRatio: "16 / 9",
+                maxHeight: "90%",
+                height: "auto",
+                minWidth: 240,
+                minHeight: 135,
+              }),
           background: "#0a0a0e",
           borderRadius: fullBleed ? 0 : 8,
           border: fullBleed

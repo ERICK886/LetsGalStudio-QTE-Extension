@@ -29,7 +29,8 @@ import {
   resolveQteStyle,
   type QteResolvedStyle,
   type QteStyleFieldKey,
-} from "../qte-style";
+} from "../qte/qte-style";
+import { FONT_SIZE_UI, FONT_UI } from "../ui-fonts";
 import {
   QTE_EDITOR_LAYERS,
   createDemoVisualModel,
@@ -37,7 +38,7 @@ import {
   tickDemoRemaining,
   type QteEditorLayerId,
 } from "./demo-snapshot";
-import type { QteVisualModel } from "../qte-visual";
+import type { QteVisualModel } from "../qte/qte-visual";
 import { EditorShell } from "./editor-shell";
 import { LayerList } from "./layer-list";
 import { PreviewStage } from "./preview-stage";
@@ -253,7 +254,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = () => {
       onClick={togglePlaying}
       style={{
         padding: "6px 14px",
-        fontSize: 13,
+        fontFamily: FONT_UI,
+        fontSize: FONT_SIZE_UI,
         fontWeight: 600,
         color: "#ff6b9f",
         background: "rgba(255, 77, 143, 0.14)",
@@ -340,7 +342,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = () => {
           onClick={togglePlaying}
           style={{
             padding: "6px 14px",
-            fontSize: 13,
+            fontFamily: FONT_UI,
+            fontSize: FONT_SIZE_UI,
             fontWeight: 600,
             color: "#ff6b9f",
             background: "rgba(255, 77, 143, 0.14)",
@@ -356,7 +359,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = () => {
           onClick={handleFlashPreview}
           style={{
             padding: "6px 14px",
-            fontSize: 13,
+            fontFamily: FONT_UI,
+            fontSize: FONT_SIZE_UI,
             fontWeight: 600,
             color: "#ffd66b",
             background: "rgba(255, 214, 107, 0.12)",

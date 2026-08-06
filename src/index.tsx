@@ -25,10 +25,14 @@ import {
   settings,
   type ExtensionRenderData,
 } from "@avg-studio/sdk";
-import { QteOverlay, type QteOverlayProps } from "./qte-overlay";
-import { runQteSession, skipQteSession } from "./qte-session";
-import type { QteFragmentCallMode, QteMode } from "./qte-logic";
-import { QTE_STYLE_DEFAULTS } from "./qte-style";
+import { QteOverlay, type QteOverlayProps } from "./qte/qte-overlay";
+import { runQteSession, skipQteSession } from "./qte/qte-session";
+import type {
+  QteConfigInput,
+  QteFragmentCallMode,
+  QteMode,
+} from "./qte/qte-logic";
+import { QTE_STYLE_DEFAULTS } from "./qte/qte-style";
 import { QteEditorExtension } from "./qte-editor";
 
 /** 片段调用模式在检查器中的选项 */
@@ -58,7 +62,7 @@ function readChapterId(params: Record<string, unknown>, key: string): string | u
  * @param params - startQte 方法收到的参数
  * @returns QteConfigInput
  */
-function buildQteConfigInput(params: Record<string, unknown>): import("./qte-logic").QteConfigInput {
+function buildQteConfigInput(params: Record<string, unknown>): QteConfigInput {
   return {
     mode: params.mode as QteMode,
     key: typeof params.key === "string" ? params.key : "KeyF",

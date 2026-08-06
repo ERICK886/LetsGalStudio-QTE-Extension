@@ -1,188 +1,271 @@
-# QTE 扩展（ink.zenly.qte-f9e583）
+# LetsGal Studio 游戏运行时 QTE
 
-为 AVG+ Studio 项目提供「单键限时」与「连打」两种 QTE 玩法扩展。
+> 扩展包 ID：`ink.zenly.qte-f9e583`｜ 程序界面：`qte`、`qte-editor`  
+> 扩展版本：`1.0.0` ｜ 需要 LetsGal Studio SDK：`>=1.9.2-beta`
 
----
+这是一个**游戏里的限时按键挑战（QTE）**：剧情调用后弹出双环按钮，玩家在时限内按对键（或连打够次数），按结果跳到 Perfect / Normal / Defeat 对应片段。
 
-> 这是一个 AVG+ Light Engine **扩展**。
-> 一个类同时承担 UI、可调用方法、存档字段、项目设置 —— 用统一基类 `Extension`。
-> 它通过 React 组件渲染到游戏舞台，可以读取宿主提供的片段 / 章节等数据。
+本文只讲**作者怎么在 Studio 里用这个扩展**。  
+若要改扩展源码或二次开发，请直接阅读仓库 [`src/`](src/) 下的模块注释。
 
-## 目录结构
+## 目录
 
+1. [这个扩展能做什么](#1-这个扩展能做什么)
+2. [安装与构建](#2-安装与构建)
+3. [五分钟做出第一次能用的 QTE](#3-五分钟做出第一次能用的-qte)
+4. [什么时候出现、怎么触发](#4-什么时候出现怎么触发)
+5. [作者设置：外观与尺寸](#5-作者设置外观与尺寸)
+6. [样式可视化编辑器](#6-样式可视化编辑器)
+7. [剧情参数：模式、位置、结果片段](#7-剧情参数模式位置结果片段)
+8. [玩家能不能自己改](#8-玩家能不能自己改)
+9. [判定结果怎么算](#9-判定结果怎么算)
+10. [用哪种 Preview、改完没生效怎么办](#10-用哪种-preview改完没生效怎么办)
+11. [自检清单与常见问题](#11-自检清单与常见问题)
+12. [更新日志](#12-更新日志)
+
+## 1. 这个扩展能做什么
+
+**可以：**
+
+- **单键限时**：在倒计时内按下指定键；落在 Perfect 时间窗内算 Perfect，否则算 Normal
+- **连打**：在时限内连按指定次数；在 Perfect 窗内凑齐次数算 Perfect
+- 用 `posX` / `posY`（舞台百分比）单独摆每次 QTE 的位置
+- Perfect / Normal / Defeat 各绑一个片段；可选「播完返回」或「不返回（切断）」
+- 项目级统一皮肤：外环 / Perfect 环 / 按钮 / 闪光颜色与尺寸
+- 用 **QTE样式编辑器** 可视化改皮肤，与扩展设置同一套数据
+
+**暂时做不到 / 要注意：**
+
+- 不负责拖拽摆布局；每次位置只在调用方法里用百分比填写
+- 样式编辑器**不会**改玩法参数，也**不会**在预览里真正跳转片段
+- 按键填的是键盘码（如 `KeyF`、`Space`），不是任意中文键名
+- 玩家不能在游戏里自己改 QTE 皮肤（皮肤只听作者项目设置）
+
+## 2. 安装与构建
+
+需要：Node.js，以及 Studio SDK `>=1.9.2-beta`。
+
+在扩展根目录执行：
+
+```powershell
+npm install
+npm run build
 ```
-src/
-  index.tsx        扩展入口 - QteExtension + QteEditorExtension
-  qte-overlay.tsx  运行时覆盖层 - 百分比定位、会话驱动
-  qte-visual.tsx   共享视觉组件 - 双环进度、按钮、闪光（运行时与编辑器共用）
-  qte-session.ts   会话生命周期 - 计时、按键绑定、判定结算
-  qte-logic.ts     判定逻辑 - 参数规范化、perfect/normal/defeat
-  qte-style.ts     样式默认值与从项目设置解析
-  key-utils.ts     按键工具 - 键名标准化与友好标签
-  qte-editor/      样式可视化编辑器（Studio 程序 UI）
-    index.tsx      QteEditorExtension 入口
-    editor-panel.tsx / editor-shell.tsx  状态编排与三栏布局壳
-    layer-list.tsx / preview-stage.tsx / property-panel.tsx  图层 / 画布 / 属性
-    demo-snapshot.ts  预览演示快照与 tick 逻辑
-  *.test.ts        逻辑单元测试
-extension.json     manifest - id / 版本 / sdkVersion
-vite.config.ts     build 配置 - lib 模式 ESM 输出
-sdk/               @avg-studio/sdk 源码副本 - npm install 会建立 symlink
-dist/              build 产物（npm run build 生成）
+
+（若仓库有 `pnpm-lock.yaml`，也可用 `pnpm install`。）
+
+Studio 会加载 `extension.json` 里写的 `dist/index.js`。  
+改完源码后：先 `build`（或开着 `npm run watch`），再在 Studio 里重载扩展；不行就重启 Preview。
+
+## 3. 五分钟做出第一次能用的 QTE
+
+跟着做一遍，就能验证「调用 → 弹出 → 按键 → 跳片段」。
+
+### 第一步：准备三个结果片段（可选但推荐）
+
+在同一章（或你要跳去的章节）里准备例如：
+
+| 片段用途 | 建议内容 |
+| --- | --- |
+| Perfect | 「太棒了」对话 |
+| Normal | 「勉强过关」对话 |
+| Defeat | 「失败了」对话 |
+
+不绑片段也能弹出 QTE，只是结束后不会自动跳剧情。
+
+### 第二步：在剧情里加「开始 QTE」
+
+在需要挑战的节点加 Action：
+
+1. 类型：**调用方法**
+2. 扩展：`ink.zenly.qte-f9e583`
+3. 方法：**开始 QTE**（`start-qte`）
+
+最少可先这样填：
+
+| 参数 | 示例 |
+| --- | --- |
+| 模式 | `单键限时` |
+| 按键 | `KeyF` |
+| 总时限(秒) | `5` |
+| 水平位置(%) | `50` |
+| 垂直位置(%) | `50` |
+| Perfect片段 / Normal片段 / Defeat片段 | 选上一步的片段 |
+
+### 第三步：用剧本 Preview 试玩
+
+跑**剧本 Preview**，播到该 Action：
+
+1. 舞台上应出现双环 + 中心按键提示
+2. 在时限内按 `F`（或你填的键）
+3. 应跳到对应结果片段
+
+## 4. 什么时候出现、怎么触发
+
+可以把它想成：
+
+```text
+剧情执行「开始 QTE」（start-qte）
+  ├─ 舞台弹出覆盖层（位置由 posX/posY 决定）
+  ├─ 玩家按对键 / 连打 / 超时 / 跳过
+  └─ 按结果跳 Perfect / Normal / Defeat 片段（若已配置）
 ```
 
-## 开发/构建命令
+| 程序界面 | 干什么 |
+| --- | --- |
+| `qte` | 运行时覆盖层 + 方法 `start-qte` + 项目样式设置 |
+| `qte-editor` | Studio 里的「QTE样式编辑器」，只改皮肤，不参与剧本调用 |
 
-安装依赖（项目含 `pnpm-lock.yaml` 时优先使用 pnpm；也可使用 npm）：
+QTE **不会**常驻挂着；只有执行到 `start-qte` 时才会出现，结算后关闭。
 
-```bash
-pnpm install          # 推荐：安装 react / vite + 建立 sdk symlink
-# 或
-npm install           # 同上
-```
+## 5. 作者设置：外观与尺寸
 
-构建与测试（无论用 pnpm 还是 npm 安装，以下 npm scripts 均可用）：
+路径：Studio → 扩展 / 项目设置 → **QTE**（程序界面 `qte`）。
 
-```bash
-npm run build         # 构建到 dist/index.js
-npm run watch         # 监听 src/ 改动并增量 build 到 dist/
-npm run test:logic    # 运行逻辑单元测试：key-utils + qte-logic
-```
+这些是**整份项目的默认皮肤**，之后每次 `start-qte` 都会用：
 
-Studio 的 Preview 会自动接住 `dist/index.js` 的更新（约 200ms 延迟）。
-
-## 在剧本中使用
-
-在 Studio 的 Action 编辑器里添加「调用方法」：
-
-- **扩展**：`ink.zenly.qte-f9e583`
-- **方法**：`start-qte`
-
-### 参数说明
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| `mode` | enum | 否 | `single` | `single` = 单键限时；`mash` = 连打 |
-| `key` | string | 是 | `KeyF` | 按键代码，如 `KeyF`、`Space`、`KeyA` |
-| `timeoutSec` | number | 是 | `5` | 总时限（秒），最小 0.1 |
-| `posX` | number | 否 | `50` | 水平位置：舞台宽度百分比 0–100（50=居中） |
-| `posY` | number | 否 | `50` | 垂直位置：舞台高度百分比 0–100（50=居中） |
-| `perfectStartSec` | number | 否 | `0` | Perfect 窗口起点（秒） |
-| `perfectEndSec` | number | 否 | `1` | Perfect 窗口终点（秒） |
-| `mashCount` | number | 否 | `10` | 连打模式需要按下的次数，最小 1 |
-| `failOnWrongKey` | boolean | 否 | `false` | 是否按错键立即判定失败 |
-| `skipCountsAsPass` | boolean | 否 | `true` | 玩家跳过时是否计为 normal（通过） |
-| `perfectFragment` | fragment | 否 | - | Perfect 结果跳转的片段 |
-| `perfectCallMode` | enum | 否 | `return` | `return`=播完返回；`goto`=不返回(切断) |
-| `normalFragment` | fragment | 否 | - | Normal 结果跳转的片段 |
-| `normalCallMode` | enum | 否 | `return` | 同上 |
-| `defeatFragment` | fragment | 否 | - | Defeat 结果跳转的片段 |
-| `defeatCallMode` | enum | 否 | `return` | 同上 |
-| `prompt` | string | 否 | - | 覆盖层顶部提示文案 |
-
-> fragment 类型参数会通过 `chapterField` 自动把所属章节 id 写入
-> `perfectChapterId` / `normalChapterId` / `defeatChapterId` 辅助字段，
-> 运行时据此跨章节跳转，无需手动填写章节 id。
-
-### 判定结果
-
-QTE 结束后会根据玩家输入自动跳转到对应片段：
-
-- `perfect`：在 Perfect 窗口内完成单键，或在窗口内完成连打次数
-- `normal`：在时限内完成但不在 Perfect 窗口内
-- `defeat`：超时、按错键、或跳过时 `skipCountsAsPass=false`
-
-## 扩展设置（样式）
-
-在 Studio 的扩展 / 项目设置中可配置本扩展样式（全局默认皮肤）：
-
-| 设置项 | 说明 | 默认 |
-|--------|------|------|
+| 设置项 | 说明 | 默认（约） |
+| --- | --- | --- |
 | 外环颜色 | 倒计时外环 | `#FFFFFFB8` |
 | Perfect颜色 | 内环与高亮 | `#FFD66B` |
-| 按钮底色 / 文字色 / 闪光颜色 | 中心按钮与 Perfect 闪光 | 见默认表 |
-| 环直径(px) | 120–600 | `320` |
-| 描边粗细(px) | 2–20 | `6` |
-| 按钮尺寸(px) | 48–200 | `88` |
+| 按钮底色 | 中心圆底 | 见设置默认 |
+| 按钮文字色 | 键名文字 | 见设置默认 |
+| 闪光颜色 | Perfect 命中扩散闪光 | 见设置默认 |
+| 环直径(px) | 外环基准直径（约 64–600） | `320` |
+| 描边粗细(px) | 环线粗细（2–20） | `6` |
+| 按钮尺寸(px) | 中心按钮直径（48–200） | `88` |
 
-每次调用仍用 `posX` / `posY`（百分比）单独摆放位置。
+> 位置不要在这里找：`posX` / `posY` 是**每次调用**的方法参数，不是项目设置。
 
-## 样式可视化编辑器
+## 6. 样式可视化编辑器
 
-本扩展另含独立子模块 **QTE样式编辑器**（`qte-editor`），在 Studio 中提供类似「可视化界面编辑器」的三栏样式编辑体验。
+程序界面：`qte-editor`，Studio 里显示为 **QTE样式编辑器**。
 
 ### 打开方式
 
-1. 在 AVG+ Studio 中打开目标项目。
-2. 进入扩展程序 UI / 模块列表。
-3. 选择 **QTE样式编辑器**（与运行时 **QTE** 模块并列）。
+1. 打开目标项目  
+2. 进入扩展程序 UI / 模块列表  
+3. 打开 **QTE样式编辑器**（与 **QTE** 并列）
 
 ### 设计页
 
-- 左侧：**图层**列表（外环、Perfect 环、按钮、闪光等固定图层）。
-- 中间：**画布**实时预览当前样式。
-- 右侧：**属性**面板，可改颜色、环直径、描边粗细、按钮尺寸等。
-- 修改会经 `ctx.settings.cross` 写入 `qte` 模块的项目设置，与 Studio「扩展设置」面板**同一套数据**，两边保持同步。
+- 左：**图层**（外环、Perfect 环、中心按钮、提示文案、闪光等）
+- 中：**画布**实时预览
+- 右：**属性**（颜色、环直径、描边、按钮尺寸等）
+
+改完会写入 `qte` 模块的项目设置，与上一节「作者设置」**同一套数据**，两边会同步。
 
 ### 预览页
 
-- 可播放演示倒计时与 Perfect **闪光**动画，用于确认动效观感。
-- 预览**不会**调用 `runQteSession`，**不会**跳转剧本片段。
+- 可看倒计时循环、Perfect 闪光演示  
+- **不会**真正跑 `start-qte`，**不会**跳转剧本片段  
 
-### 范围说明
+### 编辑器不管什么
 
-- **位置**（`posX` / `posY`）与**玩法**（按键、时限、片段跳转等）仍在剧本「调用方法 → `start-qte`」中配置；编辑器不负责摆放与判定逻辑。
-- 当前版本为 P1+P2（图层 / 画布 / 属性 + 演示预览），**不含** P3：组件架、拖拽布局、时间轴动画、脚本绑定等。
+- 不管按键、时限、连打次数  
+- 不管 Perfect / Normal / Defeat 片段  
+- 不管 `posX` / `posY` 摆放  
 
-## Studio 验收步骤
+这些仍在剧本「开始 QTE」参数里配置。
 
-1. 打开 AVG+ Studio，进入目标项目。
-2. 在「扩展」设置中确认已加载 `ink.zenly.qte-f9e583`。
-3. （可选）在扩展设置中改颜色 / 尺寸，预览是否生效。
-4. 在剧本中新增 Action：
-   - 类型选择「调用方法」
-   - 扩展选择 `ink.zenly.qte-f9e583`
-   - 方法选择 `start-qte`
-5. 配置参数，设置 `posX`/`posY`（如 30 / 70）与三种结果片段。
-6. 保存剧本，点击 Preview。
-7. 运行到该 Action 时，QTE 应出现在对应百分比位置，并套用设置中的样式。
-8. 验证三种结果跳转与 Preview 控制台无报错。
+## 7. 剧情参数：模式、位置、结果片段
 
-### 样式编辑器验收清单
+Action：**调用方法** → 扩展 `ink.zenly.qte-f9e583` → **开始 QTE**（`start-qte`）。
 
-在 Studio 中按下列步骤人工验收 **QTE样式编辑器**（可与上文 `start-qte` 验收一并完成）：
+### 常用参数
 
-1. **打开编辑器** → 模块列表进入「QTE样式编辑器」，设计页可见图层 / 画布 / 属性三栏。
-2. **改外环颜色** → 画布即时变色；打开扩展「QTE」项目设置，对应字段已同步。
-3. **改环直径** → 保存后运行 Preview 中的 `start-qte`，真开 QTE 外环尺寸与编辑器一致。
-4. **预览页** → 切换到预览页，可看到倒计时循环与闪光演示，且**无**片段跳转。
-5. **方法行为不变** → `start-qte` 的 `posX` / `posY`、按键、Perfect/Normal/Defeat 片段跳转与改编辑器前一致。
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| 模式 `mode` | 枚举 | 否 | `single` | `single` 单键限时；`mash` 连打 |
+| 按键 `key` | 字符串 | 是 | `KeyF` | 如 `KeyF`、`Space`、`KeyA` |
+| 总时限(秒) `timeoutSec` | 数字 | 是 | `5` | 最小 `0.1` |
+| 水平位置(%) `posX` | 数字 | 否 | `50` | 舞台宽度 0–100，`50`=水平居中 |
+| 垂直位置(%) `posY` | 数字 | 否 | `50` | 舞台高度 0–100，`50`=垂直居中 |
+| Perfect起点(秒) | 数字 | 否 | `0` | Perfect 时间窗起点 |
+| Perfect终点(秒) | 数字 | 否 | `1` | Perfect 时间窗终点 |
+| 连打次数 `mashCount` | 数字 | 否 | `10` | 仅连打模式，最小 `1` |
+| 按错即失败 | 开关 | 否 | 关 | 开了之后按错键立刻 Defeat |
+| 跳过算过 | 开关 | 否 | 开 | 开=跳过当 Normal；关=跳过当 Defeat |
+| Perfect / Normal / Defeat 片段 | 片段 | 否 | - | 结算后跳转的目标 |
+| Perfect / Normal / Defeat 调用 | 枚举 | 否 | `return` | `return` 播完返回；`goto` 不返回（切断） |
+| 提示文案 `prompt` | 字符串 | 否 | - | 覆盖层顶部提示 |
 
-## 关键概念
+> 片段参数会自动带上所属章节信息，一般**不用**手填章节 id。
 
-- **Extension 子类**：一个类 = 一个完整子模块。身份用 `@extension({ id, label })`
-  装饰器声明；`id` 在剧本里以 `<扩展id>/<id>` 被引用，是稳定标识。
-- **render()**：实现了就有界面，Action block「显示界面」会列出来；不实现 = 纯方法模块。
-- **method()**：通过 `static xxx = method({...})` 暴露给「调用方法」Action。
-- **settings()**：项目级扩展设置，作者在 Studio 配置面板修改。
-- **ctx (ExtensionContext)**：运行时上下文，暴露 `ctx.ui.show/hide`、
-  `ctx.input.bindShortcut`、`ctx.flow.callFragment`、`ctx.settings` 等接口。
-- **props**：从剧本的「显示界面」block 传入，通过 `this.data` 在 `render()` 里拿到。
+### 位置怎么理解
 
-## 测试
+- `(50, 50)`：大致屏幕中央  
+- `(20, 70)`：偏左下  
+- 每次调用可以摆不同位置；样式（颜色/尺寸）仍用项目统一皮肤  
 
-```bash
-npx --yes tsx --test src/key-utils.test.ts src/qte-logic.test.ts
-```
+## 8. 玩家能不能自己改
 
-或直接运行：
+**不能。**  
+皮肤与尺寸只听作者的项目设置 / 样式编辑器；玩家游玩时无法自行换色或改直径。
 
-```bash
-npm run test:logic
-```
+玩家能做的只有：在时限内按键、连打，或（若宿主提供）跳过——跳过结果由「跳过算过」开关决定。
 
-## 下一步
+## 9. 判定结果怎么算
 
-- 多子模块：在 `src/index.tsx` 中再加一个 `@extension({...}) export class XxxExtension extends Extension<...>`。
-- 持久化数据：加 `static saveSchema = defineSave({ ... })`，`this.save` 自动可读写。
-- 完整 SDK 文档：Studio 顶部 · 帮助 · SDK 手册。
+| 结果 | 典型情况 |
+| --- | --- |
+| **Perfect** | 单键：在 Perfect 时间窗内按下正确键；连打：在窗内凑齐次数 |
+| **Normal** | 时限内完成，但不在 Perfect 窗内；或跳过且「跳过算过」为开 |
+| **Defeat** | 超时；按错且「按错即失败」为开；或跳过且「跳过算过」为关 |
+
+结算后若配置了对应片段，会按该结果的「调用」方式跳转（返回 / 切断）。
+
+## 10. 用哪种 Preview、改完没生效怎么办
+
+| 你改了什么 | 建议怎么验 |
+| --- | --- |
+| `start-qte` 参数、片段跳转 | **剧本 Preview**，播到该 Action |
+| 扩展设置里的颜色 / 尺寸 | 改完保存 → 再跑剧本 Preview 触发一次 QTE |
+| 样式编辑器 | 设计页看画布；真机观感仍以剧本 Preview 的 `start-qte` 为准 |
+| 扩展源码 | `npm run build` 或 `npm run watch` → Studio 重载扩展 |
+
+**改完没生效时依次试：**
+
+1. 确认加载的是本扩展包 `ink.zenly.qte-f9e583`  
+2. 源码改过的话先 `build`，确认 `dist/index.js` 已更新  
+3. Studio 重载扩展 / 重启 Preview  
+4. 样式：确认改的是 **QTE** 设置（或样式编辑器），不是别的扩展  
+5. 位置不对：查该次调用的 `posX` / `posY`，不是项目设置  
+
+## 11. 自检清单与常见问题
+
+### 自检清单
+
+- [ ] 扩展已加载，版本与 SDK 满足头部要求  
+- [ ] 剧本里有「开始 QTE」，按键与时限已填  
+- [ ] Preview 能弹出双环，按键有反应  
+- [ ] Perfect / Normal / Defeat 片段跳转符合预期  
+- [ ] （可选）样式编辑器改色后，设置面板与真开 QTE 一致  
+- [ ] （可选）`posX` / `posY` 摆位正确  
+
+### 常见问题
+
+**Q：界面出来了，但按键没反应？**  
+A：确认 `key` 是否为键盘码（如 `KeyF`），并在 Preview 窗口处于焦点时按键。
+
+**Q：样式编辑器预览里怎么不跳片段？**  
+A：正常。预览页只演示动画，不跑真实会话；跳片段请用剧本 Preview + `start-qte`。
+
+**Q：改了颜色，游戏里还是旧的？**  
+A：确认改的是本扩展 **QTE** 设置；保存后重新触发一次 QTE；必要时重载扩展。
+
+**Q：想每次 QTE 颜色不同？**  
+A：当前版本皮肤是项目级统一的；每次调用只能改位置与玩法参数，不能按次换皮。
+
+**Q：连打一直 Defeat？**  
+A：检查 `mashCount`、总时限，以及 Perfect 时间窗是否过短。
+
+## 12. 更新日志
+
+### 1.0.0
+
+- 单键限时 / 连打两种模式  
+- Perfect / Normal / Defeat 片段跳转（返回 / 切断）  
+- `posX` / `posY` 百分比定位  
+- 项目级样式设置  
+- QTE样式编辑器（设计 / 预览，与设置同步）  

@@ -18,6 +18,7 @@ import {
   QTE_EDITOR_LAYERS,
   type QteEditorLayerId,
 } from "./demo-snapshot";
+import { FONT_SIZE_UI, FONT_UI } from "../ui-fonts";
 
 /**
  * LayerList 的 props 类型。
@@ -125,7 +126,8 @@ const LayerItem: React.FC<LayerItemProps> = ({ label, active, onClick }) => {
           ? "rgba(255, 77, 143, 0.14)"
           : "transparent",
         color: active ? "#ff6b9f" : "#c8c8d0",
-        fontSize: 13,
+        fontFamily: FONT_UI,
+        fontSize: FONT_SIZE_UI,
         fontWeight: active ? 600 : 400,
         textAlign: "left",
         cursor: "pointer",

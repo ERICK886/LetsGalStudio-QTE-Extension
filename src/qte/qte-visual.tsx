@@ -26,6 +26,7 @@ import {
   glowShadow,
   type QteResolvedStyle,
 } from "./qte-style";
+import { FONT_UI } from "../ui-fonts";
 
 /**
  * 编辑器可高亮的视觉层标识。
@@ -38,7 +39,7 @@ import {
  * - `null`    运行时默认，不高亮
  *
  * 之所以在此处（而非 editor 包）定义，是为了避免 editor ↔ visual 之间的循环依赖；
- * Task 3 会在 `demo-snapshot.ts` 中 re-export 本类型。
+ * `demo-snapshot.ts` 通过 `NonNullable<QteVisualHighlightLayer>` 复用本类型。
  */
 export type QteVisualHighlightLayer =
   | "outer"
@@ -103,8 +104,10 @@ export interface QteVisualProps {
 /**
  * 字体栈：优先系统字体，避免加载外部资源。
  */
-const FONT_BODY =
-  '-apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+/**
+ * UI / 提示文案字体：与编辑器一致（MiSans + 中文回退）。
+ */
+const FONT_BODY = FONT_UI;
 
 /**
  * 编辑器选中层高亮时使用的描边样式。

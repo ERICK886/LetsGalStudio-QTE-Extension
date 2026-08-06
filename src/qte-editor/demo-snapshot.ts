@@ -10,8 +10,8 @@
  * 避免在两处维护同一份字符串字面量联合。
  */
 
-import type { QteVisualModel, QteVisualHighlightLayer } from "../qte-visual";
-import type { QteStyleFieldKey } from "../qte-style";
+import type { QteVisualModel, QteVisualHighlightLayer } from "../qte/qte-visual";
+import type { QteStyleFieldKey } from "../qte/qte-style";
 
 /**
  * 编辑器可选中的视觉层标识（不含 null）。

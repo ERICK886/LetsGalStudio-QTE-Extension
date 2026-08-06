@@ -16,6 +16,7 @@
  */
 
 import React from "react";
+import { FONT_SIZE_UI, FONT_UI } from "../ui-fonts";
 
 /**
  * EditorShell 的 props 类型。
@@ -76,10 +77,11 @@ export const EditorShell: React.FC<EditorShellProps> = ({
         flexDirection: "column",
         background: "#15151a",
         color: "#d8d8e0",
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif',
+        fontFamily: FONT_UI,
+        fontSize: FONT_SIZE_UI,
         overflow: "hidden",
       }}
+      data-qte-editor-shell=""
     >
       {/* 顶栏：页签 + 标题 + 工具条 */}
       <header
@@ -98,7 +100,8 @@ export const EditorShell: React.FC<EditorShellProps> = ({
         {title && (
           <span
             style={{
-              fontSize: 14,
+              fontFamily: FONT_UI,
+              fontSize: FONT_SIZE_UI,
               fontWeight: 600,
               color: "#e8e8ea",
               letterSpacing: "0.02em",
@@ -193,7 +196,8 @@ const TabSwitcher: React.FC<TabSwitcherProps> = ({ tab, onTabChange }) => {
             onClick={() => onTabChange(t.id)}
             style={{
               padding: "6px 14px",
-              fontSize: 13,
+              fontFamily: FONT_UI,
+              fontSize: FONT_SIZE_UI,
               fontWeight: active ? 600 : 400,
               color: active ? "#ff6b9f" : "#9a9aa3",
               background: active
@@ -258,7 +262,8 @@ const Pane: React.FC<PaneProps> = ({
           style={{
             flex: "0 0 auto",
             padding: "10px 12px",
-            fontSize: 11,
+            fontFamily: FONT_UI,
+            fontSize: FONT_SIZE_UI,
             fontWeight: 600,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
@@ -276,6 +281,8 @@ const Pane: React.FC<PaneProps> = ({
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
+          // 属性栏（last）需露出 ColorPicker 弹出层；其余栏可滚动
+          overflow: last ? "visible" : bare ? "hidden" : "auto",
         }}
       >
         {children}

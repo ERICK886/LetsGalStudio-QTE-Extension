@@ -2,18 +2,14 @@
  * 文件名：property-panel.tsx
  * 作者：池水三两升
  * 日期：2026-08-06
- * 版本：1.0.0
- * 描述：QTE 编辑器 —— 属性面板（右侧子面板）
+ * 版本：1.1.0
+ * 描述：QTE 编辑器 —— 属性面板（右侧子面板；颜色走独立 ColorPicker）
  *
  * 根据当前选中层暴露的 `fields`（`QteStyleFieldKey[]`）渲染对应控件：
- * - 颜色字段：`<input type="color">` 取 #RRGGBB；若原值带 alpha
- *   （#RRGGBBAA 或 rgba()），另起 text input 编辑完整 CSS 颜色
+ * - 颜色字段：独立 `ColorPicker`（SV / 色相 / Alpha / HEX·RGB·HSL）
  * - 数值字段：`<input type="range">` + number，min/max 来自 `QTE_STYLE_LIMITS`
  * - `fields` 为空且提供 `onLocalPromptChange`：渲染本地预览提示文案输入
- *   （仅本地，不写入 settings）
- * - `showFlashButton`：渲染「播放闪光预览」按钮，调用 `onFlashPreview`
- *
- * 视觉基调：深炭黑底 + 品红强调，对标 Studio 气质。
+ * - `showFlashButton`：渲染「播放闪光预览」按钮
  */
 
 import React from "react";
@@ -21,7 +17,9 @@ import {
   QTE_STYLE_LIMITS,
   type QteResolvedStyle,
   type QteStyleFieldKey,
-} from "../qte-style";
+} from "../qte/qte-style";
+import { FONT_MONO, FONT_SIZE_UI, FONT_UI } from "../ui-fonts";
+import { ColorPicker } from "./color-picker";
 
 /**
  * PropertyPanel 的 props 类型。
@@ -68,76 +66,6 @@ function isNumericStyleField(
   field: QteStyleFieldKey,
 ): field is QteNumericStyleFieldKey {
   return field in QTE_STYLE_LIMITS;
-}
-
-/**
- * 将任意 CSS 颜色字符串规范化为 `<input type="color">` 可用的 `#RRGGBB`。
- *
- * 只取 `#RRGGBB` 前缀；其他格式（rgba / #RGB / 命名色）回退 `#ffffff`，
- * 保证 color 控件不报错。alpha 信息由旁边的 text input 单独维护。
- *
- * @param css - 原始 CSS 颜色字符串
- * @returns 6 位 hex 颜色（`#rrggbb`）
- *
- * @example
- * toColorInputValue("#FFD66BB3"); // "#FFD66B"
- * toColorInputValue("rgba(1,2,3,0.5)"); // "#ffffff"
- */
-function toColorInputValue(css: string): string {
-  const m = /^#([0-9a-fA-F]{6})/.exec(css.trim());
-  return m ? `#${m[1]}` : "#ffffff";
-}
-
-/**
- * 判断颜色字符串是否带 alpha 通道。
- *
- * 命中以下任一情况即视为带 alpha：
- * - 8 位 hex（`#RRGGBBAA`）
- * - `rgba(...)` / `hsla(...)`（函数形式即视为含 alpha 通道，含整数 0/1）
- *
- * @param css - 原始 CSS 颜色字符串
- * @returns 是否带 alpha
- */
-function hasAlpha(css: string): boolean {
-  const trimmed = css.trim();
-  if (/^#[0-9a-fA-F]{8}$/.test(trimmed)) {
-    return true;
-  }
-  return /^rgba\(/i.test(trimmed) || /^hsla\(/i.test(trimmed);
-}
-
-/**
- * 将 color 控件选出的 `#RRGGBB` 与原值的 alpha 后缀合成回完整 CSS 颜色。
- *
- * - 原值为 8 位 hex：拼接为 `#RRGGBBAA`
- * - 原值为 rgba()：解析出 a，重组为 `rgba(r, g, b, a)`
- * - 否则直接写 `#rrggbb`
- *
- * @param originalCss - 原始颜色值（可能带 alpha）
- * @param newRgbHex   - color 控件返回的 6 位 hex（`#RRGGBB`）
- * @returns 合成后的 CSS 颜色字符串
- */
-function applyRgbKeepingAlpha(
-  originalCss: string,
-  newRgbHex: string,
-): string {
-  const trimmed = originalCss.trim();
-  const hex8 = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(trimmed);
-  if (hex8) {
-    return `${newRgbHex}${hex8[1]}`.toUpperCase();
-  }
-
-  const rgba = /^rgba?\(\s*([^)]+)\s*\)$/i.exec(trimmed);
-  if (rgba) {
-    const parts = rgba[1]!.split(",").map((p) => p.trim());
-    const a = parts.length === 4 ? parts[3]! : "1";
-    const r = parseInt(newRgbHex.slice(1, 3), 16);
-    const g = parseInt(newRgbHex.slice(3, 5), 16);
-    const b = parseInt(newRgbHex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-
-  return newRgbHex.toUpperCase();
 }
 
 /**
@@ -195,6 +123,8 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         flexDirection: "column",
         gap: 14,
         padding: "12px 12px 16px 12px",
+        // 允许 ColorPicker 弹出层溢出面板
+        overflow: "visible",
       }}
     >
       {fields.map((field) => {
@@ -250,7 +180,8 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             border: "1px solid rgba(255, 77, 143, 0.5)",
             background: "rgba(255, 77, 143, 0.12)",
             color: "#ff6b9f",
-            fontSize: 13,
+            fontFamily: FONT_UI,
+            fontSize: FONT_SIZE_UI,
             fontWeight: 600,
             cursor: readOnly ? "not-allowed" : "pointer",
             opacity: readOnly ? 0.5 : 1,
@@ -290,10 +221,7 @@ interface ColorFieldProps {
 }
 
 /**
- * 颜色字段控件：color picker + 可选 alpha text input。
- *
- * - color picker 只改 RGB；若原值带 alpha，保留原 alpha 后缀
- * - 当原值带 alpha 时，额外渲染 text input 供编辑完整 CSS 颜色
+ * 颜色字段：委托独立 `ColorPicker` 组件。
  *
  * @returns 颜色字段 React 节点
  */
@@ -303,78 +231,14 @@ const ColorField: React.FC<ColorFieldProps> = ({
   readOnly,
   onChange,
 }) => {
-  const withAlpha = hasAlpha(value);
-  const colorInputValue = toColorInputValue(value);
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label
-        style={{
-          fontSize: 12,
-          color: "#9a9aa3",
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </label>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input
-          type="color"
-          value={colorInputValue}
-          readOnly={readOnly}
-          onChange={(e) => {
-            const next = applyRgbKeepingAlpha(value, e.target.value);
-            onChange(next);
-          }}
-          style={{
-            width: 36,
-            height: 28,
-            padding: 0,
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            borderRadius: 6,
-            background: "transparent",
-            cursor: readOnly ? "default" : "pointer",
-          }}
-        />
-
-        {withAlpha && (
-          <input
-            type="text"
-            value={value}
-            readOnly={readOnly}
-            onChange={(e) => onChange(e.target.value)}
-            spellCheck={false}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: "4px 8px",
-              fontSize: 12,
-              fontFamily:
-                'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-              color: "#d8d8e0",
-              background: "rgba(255, 255, 255, 0.04)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: 6,
-              outline: "none",
-            }}
-          />
-        )}
-
-        {!withAlpha && (
-          <span
-            style={{
-              fontSize: 12,
-              fontFamily:
-                'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-              color: "#9a9aa3",
-            }}
-          >
-            {value}
-          </span>
-        )}
-      </div>
-    </div>
+    <ColorPicker
+      label={label}
+      value={value}
+      readOnly={readOnly}
+      allowAlpha
+      onChange={onChange}
+    />
   );
 };
 
@@ -416,7 +280,8 @@ const NumberField: React.FC<NumberFieldProps> = ({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label
         style={{
-          fontSize: 12,
+          fontFamily: FONT_UI,
+          fontSize: FONT_SIZE_UI,
           color: "#9a9aa3",
           fontWeight: 500,
         }}
@@ -455,7 +320,8 @@ const NumberField: React.FC<NumberFieldProps> = ({
           style={{
             width: 64,
             padding: "4px 6px",
-            fontSize: 12,
+            fontFamily: FONT_MONO,
+            fontSize: FONT_SIZE_UI,
             color: "#d8d8e0",
             background: "rgba(255, 255, 255, 0.04)",
             border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -498,7 +364,8 @@ const LocalPromptField: React.FC<LocalPromptFieldProps> = ({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label
         style={{
-          fontSize: 12,
+          fontFamily: FONT_UI,
+          fontSize: FONT_SIZE_UI,
           color: "#9a9aa3",
           fontWeight: 500,
         }}
@@ -516,14 +383,14 @@ const LocalPromptField: React.FC<LocalPromptFieldProps> = ({
         style={{
           width: "100%",
           padding: "6px 8px",
-          fontSize: 13,
+          fontFamily: FONT_UI,
+          fontSize: FONT_SIZE_UI,
           color: "#d8d8e0",
           background: "rgba(255, 255, 255, 0.04)",
           border: "1px solid rgba(255, 255, 255, 0.1)",
           borderRadius: 6,
           resize: "vertical",
           outline: "none",
-          fontFamily: "inherit",
         }}
       />
     </div>

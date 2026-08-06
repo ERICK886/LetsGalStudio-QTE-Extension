@@ -1,7 +1,7 @@
 {
   "id": "ink.zenly.qte-f9e583",
   "name": "游戏运行时QTE",
-  "description": "用于游戏内的QTE",
+  "description": "剧情限时按键挑战：单键/连打、Perfect/Normal/Defeat跳转，含百分比定位与样式编辑器。",
   "author": "池水三两升",
   "version": "1.0.0",
   "entry": "dist/index.js",
