@@ -1,4 +1,4 @@
-# QTE 扩展（qte-f9e583）
+# QTE 扩展（ink.zenly.qte-f9e583）
 
 为 AVG+ Studio 项目提供「单键限时」与「连打」两种 QTE 玩法扩展。
 
@@ -19,7 +19,7 @@ src/
   qte-style.ts     样式默认值与从项目设置解析
   key-utils.ts     按键工具 - 键名标准化与友好标签
   *.test.ts        逻辑单元测试
-extension.json     manifest - id / 版本 / sdkVersion（id 保持 qte-f9e583 不变）
+extension.json     manifest - id / 版本 / sdkVersion
 vite.config.ts     build 配置 - lib 模式 ESM 输出
 sdk/               @avg-studio/sdk 源码副本 - npm install 会建立 symlink
 dist/              build 产物（npm run build 生成）
@@ -49,7 +49,7 @@ Studio 的 Preview 会自动接住 `dist/index.js` 的更新（约 200ms 延迟�
 
 在 Studio 的 Action 编辑器里添加「调用方法」：
 
-- **扩展**：`qte-f9e583`
+- **扩展**：`ink.zenly.qte-f9e583`
 - **方法**：`start-qte`
 
 ### 参数说明
@@ -101,11 +101,11 @@ QTE 结束后会根据玩家输入自动跳转到对应片段：
 ## Studio 验收步骤
 
 1. 打开 AVG+ Studio，进入目标项目。
-2. 在「扩展」设置中确认已加载 `qte-f9e583`（manifest id 不变）。
+2. 在「扩展」设置中确认已加载 `ink.zenly.qte-f9e583`。
 3. （可选）在扩展设置中改颜色 / 尺寸，预览是否生效。
 4. 在剧本中新增 Action：
    - 类型选择「调用方法」
-   - 扩展选择 `qte-f9e583`
+   - 扩展选择 `ink.zenly.qte-f9e583`
    - 方法选择 `start-qte`
 5. 配置参数，设置 `posX`/`posY`（如 30 / 70）与三种结果片段。
 6. 保存剧本，点击 Preview。

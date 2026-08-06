@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 扩展稳定 id 保持 `qte-f9e583`，禁止修改 `extension.json.id`
+- 扩展稳定 id：`ink.zenly.qte-f9e583`（版本 `1.0.0`）
 - 禁止手改 `sdk/` 与 `dist/`；行为变更只改 `src/` 后 `npm run build`
 - 不引入第二份 React；保持 Vite `external` 配置
 - 新文件 kebab-case；禁止用 `any` 掩盖 SDK 契约

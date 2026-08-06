@@ -26,7 +26,7 @@ import {
  * UI 模块标识，必须与 @extension({ id: "qte" }) 模块 id 一致，
  * 供 ctx.ui.show / ctx.ui.hide 使用。
  *
- * 注意：不是 extension.json 中的 id（extension.json.id 为 "qte-f9e583"）。
+ * 注意：不是 extension.json 中的 id（extension.json.id 为 "ink.zenly.qte-f9e583"）。
  */
 const UI_ID = "qte";
 
