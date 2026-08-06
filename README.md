@@ -12,12 +12,18 @@
 
 ```
 src/
-  index.tsx        扩展入口 - QteExtension（UI + settings + start-qte）
-  qte-overlay.tsx  视觉组件 - 百分比定位、可配置样式、双环进度
+  index.tsx        扩展入口 - QteExtension + QteEditorExtension
+  qte-overlay.tsx  运行时覆盖层 - 百分比定位、会话驱动
+  qte-visual.tsx   共享视觉组件 - 双环进度、按钮、闪光（运行时与编辑器共用）
   qte-session.ts   会话生命周期 - 计时、按键绑定、判定结算
   qte-logic.ts     判定逻辑 - 参数规范化、perfect/normal/defeat
   qte-style.ts     样式默认值与从项目设置解析
   key-utils.ts     按键工具 - 键名标准化与友好标签
+  qte-editor/      样式可视化编辑器（Studio 程序 UI）
+    index.tsx      QteEditorExtension 入口
+    editor-panel.tsx / editor-shell.tsx  状态编排与三栏布局壳
+    layer-list.tsx / preview-stage.tsx / property-panel.tsx  图层 / 画布 / 属性
+    demo-snapshot.ts  预览演示快照与 tick 逻辑
   *.test.ts        逻辑单元测试
 extension.json     manifest - id / 版本 / sdkVersion
 vite.config.ts     build 配置 - lib 模式 ESM 输出
@@ -101,6 +107,33 @@ QTE 结束后会根据玩家输入自动跳转到对应片段：
 
 每次调用仍用 `posX` / `posY`（百分比）单独摆放位置。
 
+## 样式可视化编辑器
+
+本扩展另含独立子模块 **QTE样式编辑器**（`qte-editor`），在 Studio 中提供类似「可视化界面编辑器」的三栏样式编辑体验。
+
+### 打开方式
+
+1. 在 AVG+ Studio 中打开目标项目。
+2. 进入扩展程序 UI / 模块列表。
+3. 选择 **QTE样式编辑器**（与运行时 **QTE** 模块并列）。
+
+### 设计页
+
+- 左侧：**图层**列表（外环、Perfect 环、按钮、闪光等固定图层）。
+- 中间：**画布**实时预览当前样式。
+- 右侧：**属性**面板，可改颜色、环直径、描边粗细、按钮尺寸等。
+- 修改会经 `ctx.settings.cross` 写入 `qte` 模块的项目设置，与 Studio「扩展设置」面板**同一套数据**，两边保持同步。
+
+### 预览页
+
+- 可播放演示倒计时与 Perfect **闪光**动画，用于确认动效观感。
+- 预览**不会**调用 `runQteSession`，**不会**跳转剧本片段。
+
+### 范围说明
+
+- **位置**（`posX` / `posY`）与**玩法**（按键、时限、片段跳转等）仍在剧本「调用方法 → `start-qte`」中配置；编辑器不负责摆放与判定逻辑。
+- 当前版本为 P1+P2（图层 / 画布 / 属性 + 演示预览），**不含** P3：组件架、拖拽布局、时间轴动画、脚本绑定等。
+
 ## Studio 验收步骤
 
 1. 打开 AVG+ Studio，进入目标项目。
@@ -114,6 +147,16 @@ QTE 结束后会根据玩家输入自动跳转到对应片段：
 6. 保存剧本，点击 Preview。
 7. 运行到该 Action 时，QTE 应出现在对应百分比位置，并套用设置中的样式。
 8. 验证三种结果跳转与 Preview 控制台无报错。
+
+### 样式编辑器验收清单
+
+在 Studio 中按下列步骤人工验收 **QTE样式编辑器**（可与上文 `start-qte` 验收一并完成）：
+
+1. **打开编辑器** → 模块列表进入「QTE样式编辑器」，设计页可见图层 / 画布 / 属性三栏。
+2. **改外环颜色** → 画布即时变色；打开扩展「QTE」项目设置，对应字段已同步。
+3. **改环直径** → 保存后运行 Preview 中的 `start-qte`，真开 QTE 外环尺寸与编辑器一致。
+4. **预览页** → 切换到预览页，可看到倒计时循环与闪光演示，且**无**片段跳转。
+5. **方法行为不变** → `start-qte` 的 `posX` / `posY`、按键、Perfect/Normal/Defeat 片段跳转与改编辑器前一致。
 
 ## 关键概念
 
