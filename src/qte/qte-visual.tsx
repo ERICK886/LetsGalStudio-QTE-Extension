@@ -49,16 +49,20 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function outerScale(model: QteVisualModel): number {
+export function computeOuterRingScale(model: QteVisualModel): number {
   return model.timeoutSec > 0
     ? 0.5 + 0.5 * clamp01(model.remainingSec / model.timeoutSec)
     : 0.5;
 }
 
-function perfectScale(model: QteVisualModel): number {
+/**
+ * 将 Perfect 环固定在判定窗口终点对应的计时环半径上。
+ * 当 elapsed === perfectEndSec 时，收缩中的外环会与 Perfect 环精确重合。
+ */
+export function computePerfectRingScale(model: QteVisualModel): number {
   if (!model.perfectEnabled || model.timeoutSec <= 0) return 0.62;
-  const middle = (model.perfectStartSec + model.perfectEndSec) / 2;
-  return 0.5 + 0.5 * clamp01((model.timeoutSec - middle) / model.timeoutSec);
+  const remainingAtPerfectEnd = model.timeoutSec - model.perfectEndSec;
+  return 0.5 + 0.5 * clamp01(remainingAtPerfectEnd / model.timeoutSec);
 }
 
 function inPerfectWindow(model: QteVisualModel): boolean {
@@ -166,8 +170,8 @@ export const QteVisual: React.FC<QteVisualProps> = ({
   highlightLayer = null,
 }) => {
   const base = style.ringDiameter;
-  const currentOuterScale = outerScale(model);
-  const currentPerfectScale = perfectScale(model);
+  const currentOuterScale = computeOuterRingScale(model);
+  const currentPerfectScale = computePerfectRingScale(model);
   const perfectActive = inPerfectWindow(model);
   const percent = model.timeoutSec > 0
     ? Math.round(clamp01(model.remainingSec / model.timeoutSec) * 100)

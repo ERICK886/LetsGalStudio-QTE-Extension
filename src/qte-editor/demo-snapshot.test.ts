@@ -12,6 +12,10 @@ import {
   fieldsForLayer,
   tickDemoRemaining,
 } from "./demo-snapshot";
+import {
+  computeOuterRingScale,
+  computePerfectRingScale,
+} from "../qte/qte-visual";
 
 describe("tickDemoRemaining", () => {
   it("decrements and loops", () => {
@@ -44,5 +48,19 @@ describe("createDemoVisualModel", () => {
     const m = createDemoVisualModel();
     assert.equal(m.posX, 50);
     assert.equal(m.posY, 50);
+  });
+
+  it("places the Perfect ring at the perfectEndSec radius", () => {
+    const model = createDemoVisualModel();
+    const outerRingAtPerfectEnd = computeOuterRingScale({
+      ...model,
+      remainingSec: model.timeoutSec - model.perfectEndSec,
+    });
+
+    assert.equal(computePerfectRingScale(model), outerRingAtPerfectEnd);
+    assert.equal(
+      computePerfectRingScale({ ...model, perfectStartSec: 0 }),
+      outerRingAtPerfectEnd,
+    );
   });
 });
