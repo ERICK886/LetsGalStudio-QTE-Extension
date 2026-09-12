@@ -26,12 +26,15 @@ export type QteEditorLayerId = NonNullable<QteVisualHighlightLayer>;
  *
  * 顺序：外环 → Perfect 环 → 中心按钮 → 提示文案 → 闪光
  */
-export const QTE_EDITOR_LAYERS: { id: QteEditorLayerId; label: string }[] = [
-  { id: "outer", label: "外环" },
-  { id: "perfect", label: "Perfect环" },
-  { id: "button", label: "中心按钮" },
-  { id: "prompt", label: "提示文案" },
-  { id: "flash", label: "闪光" },
+export const QTE_EDITOR_LAYERS: { id: QteEditorLayerId; label: string; icon: string }[] = [
+  { id: "backdrop", label: "背景", icon: "◩" },
+  { id: "outer", label: "计时环", icon: "◯" },
+  { id: "ticks", label: "刻度", icon: "✣" },
+  { id: "perfect", label: "Perfect", icon: "◎" },
+  { id: "button", label: "按键", icon: "◆" },
+  { id: "prompt", label: "文案", icon: "T" },
+  { id: "progress", label: "进度", icon: "⌛" },
+  { id: "flash", label: "特效", icon: "✦" },
 ];
 
 /** 演示用 QTE 总时限（秒） */
@@ -119,17 +122,60 @@ export function fieldsForLayer(
 ): QteStyleFieldKey[] {
   switch (layer) {
     case null:
-      return ["ringDiameter", "ringStroke", "buttonSize"];
+      return ["ringDiameter", "ringStroke", "buttonSize", "motionSpeed"];
+    case "backdrop":
+      return ["overlayColor", "overlayBlur", "ambientGlow"];
     case "outer":
-      return ["outerRingColor", "ringDiameter", "ringStroke"];
+      return [
+        "outerRingColor",
+        "outerTrackColor",
+        "ringShape",
+        "ringPattern",
+        "ringDiameter",
+        "ringStroke",
+        "ringGlow",
+        "ringRotationSpeed",
+      ];
+    case "ticks":
+      return ["tickColor", "tickCount", "tickLength"];
     case "perfect":
       return ["perfectColor"];
     case "button":
-      return ["buttonBgColor", "buttonTextColor", "buttonSize"];
+      return [
+        "buttonBgColor",
+        "buttonTextColor",
+        "buttonBorderColor",
+        "buttonAccentColor",
+        "buttonShape",
+        "buttonSize",
+        "buttonBorderWidth",
+        "buttonFontSize",
+        "buttonShadow",
+        "buttonPulse",
+      ];
     case "prompt":
-      return [];
+      return [
+        "promptColor",
+        "promptBgColor",
+        "promptWeight",
+        "promptFontSize",
+        "promptOffset",
+        "promptLetterSpacing",
+        "promptPadding",
+        "promptRadius",
+      ];
+    case "progress":
+      return ["progressMode", "progressColor", "progressFontSize", "progressOffset"];
     case "flash":
-      return ["flashColor"];
+      return [
+        "flashColor",
+        "flashSize",
+        "flashIntensity",
+        "flashDuration",
+        "ambientGlow",
+        "sparkCount",
+        "motionSpeed",
+      ];
     default:
       return [];
   }

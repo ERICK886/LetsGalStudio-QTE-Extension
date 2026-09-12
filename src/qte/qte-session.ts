@@ -331,7 +331,7 @@ export async function runQteSession(
             hitCount: session.hitCount,
           }),
         );
-        await sleep(400);
+        await sleep(session.style.flashDuration);
 
         // 闪光期间若会话被 abort/cancel/替换，必须禁止后续跳转
         if (!session.allowJump) {

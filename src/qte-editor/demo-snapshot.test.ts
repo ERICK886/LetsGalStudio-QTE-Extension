@@ -26,9 +26,16 @@ describe("fieldsForLayer", () => {
       "ringDiameter",
       "ringStroke",
       "buttonSize",
+      "motionSpeed",
     ]);
     assert.deepEqual(fieldsForLayer("perfect"), ["perfectColor"]);
-    assert.deepEqual(fieldsForLayer("prompt"), []);
+    assert.deepEqual(fieldsForLayer("backdrop"), [
+      "overlayColor",
+      "overlayBlur",
+      "ambientGlow",
+    ]);
+    assert.ok(fieldsForLayer("prompt").includes("promptFontSize"));
+    assert.ok(fieldsForLayer("flash").includes("flashDuration"));
   });
 });
 

@@ -99,22 +99,35 @@ function buildQteConfigInput(params: Record<string, unknown>): QteConfigInput {
  */
 @extension({ id: "qte", label: "QTE" })
 class QteExtension extends Extension<QteOverlayProps> {
-  /**
-   * 项目级样式设置（Studio 扩展配置面板可见）。
-   *
-   * 颜色支持 alpha；尺寸有 min/max，便于检查器使用范围控件。
-   */
+  /** 项目级样式设置；自定义样式实验室与这里读写同一组字段。 */
   static settings = settings((s) => ({
+    overlayColor: s
+      .color("舞台遮罩")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.overlayColor),
+    overlayBlur: s
+      .number("背景模糊(px)")
+      .default(QTE_STYLE_DEFAULTS.overlayBlur)
+      .range(0, 20)
+      .step(1),
     outerRingColor: s
       .color("外环颜色")
       .allowAlpha()
       .default(QTE_STYLE_DEFAULTS.outerRingColor)
       .describe("倒计时外环描边颜色"),
+    outerTrackColor: s
+      .color("环形轨道颜色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.outerTrackColor),
     perfectColor: s
       .color("Perfect颜色")
       .allowAlpha()
       .default(QTE_STYLE_DEFAULTS.perfectColor)
       .describe("恰到好处内环与高亮颜色"),
+    tickColor: s
+      .color("刻度颜色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.tickColor),
     buttonBgColor: s
       .color("按钮底色")
       .allowAlpha()
@@ -122,27 +135,172 @@ class QteExtension extends Extension<QteOverlayProps> {
     buttonTextColor: s
       .color("按钮文字色")
       .default(QTE_STYLE_DEFAULTS.buttonTextColor),
+    buttonBorderColor: s
+      .color("按钮描边色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.buttonBorderColor),
+    buttonAccentColor: s
+      .color("按钮强调色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.buttonAccentColor),
+    promptColor: s
+      .color("提示文字色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.promptColor),
+    promptBgColor: s
+      .color("提示底色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.promptBgColor),
+    progressColor: s
+      .color("进度文字色")
+      .allowAlpha()
+      .default(QTE_STYLE_DEFAULTS.progressColor),
     flashColor: s
       .color("闪光颜色")
       .allowAlpha()
       .default(QTE_STYLE_DEFAULTS.flashColor)
       .describe("Perfect 命中时的扩散闪光"),
+    ringShape: s
+      .enum("计时环形状", ["circle", "rounded-square", "diamond"] as const)
+      .labels({ circle: "圆形", "rounded-square": "圆角方形", diamond: "菱形" })
+      .default(QTE_STYLE_DEFAULTS.ringShape),
+    ringPattern: s
+      .enum("计时环纹理", ["solid", "dashed", "segmented"] as const)
+      .labels({ solid: "实线", dashed: "虚线", segmented: "分段" })
+      .default(QTE_STYLE_DEFAULTS.ringPattern),
+    buttonShape: s
+      .enum("按钮形状", ["circle", "rounded", "diamond"] as const)
+      .labels({ circle: "圆形", rounded: "圆角方形", diamond: "菱形" })
+      .default(QTE_STYLE_DEFAULTS.buttonShape),
+    promptWeight: s
+      .enum("提示字重", ["regular", "semibold", "bold"] as const)
+      .labels({ regular: "常规", semibold: "半粗", bold: "粗体" })
+      .default(QTE_STYLE_DEFAULTS.promptWeight),
+    progressMode: s
+      .enum("进度显示", ["none", "time", "percent"] as const)
+      .labels({ none: "隐藏", time: "剩余秒数", percent: "剩余百分比" })
+      .default(QTE_STYLE_DEFAULTS.progressMode),
     ringDiameter: s
       .number("环直径(px)")
       .default(QTE_STYLE_DEFAULTS.ringDiameter)
-      .range(64, 600)
+      .range(96, 640)
       .step(1)
       .describe("外环基准直径，实际大小随倒计时缩放"),
     ringStroke: s
       .number("描边粗细(px)")
       .default(QTE_STYLE_DEFAULTS.ringStroke)
-      .range(2, 20)
+      .range(1, 24)
+      .step(1),
+    ringGlow: s
+      .number("环辉光(px)")
+      .default(QTE_STYLE_DEFAULTS.ringGlow)
+      .range(0, 80)
+      .step(1),
+    ringRotationSpeed: s
+      .number("环旋转速度(度/秒)")
+      .default(QTE_STYLE_DEFAULTS.ringRotationSpeed)
+      .range(-180, 180)
+      .step(5),
+    tickCount: s
+      .number("刻度数量")
+      .default(QTE_STYLE_DEFAULTS.tickCount)
+      .range(0, 36)
+      .step(1),
+    tickLength: s
+      .number("刻度长度(px)")
+      .default(QTE_STYLE_DEFAULTS.tickLength)
+      .range(2, 28)
       .step(1),
     buttonSize: s
       .number("按钮尺寸(px)")
       .default(QTE_STYLE_DEFAULTS.buttonSize)
-      .range(48, 200)
+      .range(40, 220)
       .step(1),
+    buttonBorderWidth: s
+      .number("按钮描边(px)")
+      .default(QTE_STYLE_DEFAULTS.buttonBorderWidth)
+      .range(0, 12)
+      .step(1),
+    buttonFontSize: s
+      .number("按键字号(px)")
+      .default(QTE_STYLE_DEFAULTS.buttonFontSize)
+      .range(12, 72)
+      .step(1),
+    buttonShadow: s
+      .number("按钮阴影(px)")
+      .default(QTE_STYLE_DEFAULTS.buttonShadow)
+      .range(0, 64)
+      .step(1),
+    buttonPulse: s
+      .number("按钮呼吸幅度(%)")
+      .default(QTE_STYLE_DEFAULTS.buttonPulse)
+      .range(0, 16)
+      .step(1),
+    promptFontSize: s
+      .number("提示字号(px)")
+      .default(QTE_STYLE_DEFAULTS.promptFontSize)
+      .range(10, 42)
+      .step(1),
+    promptOffset: s
+      .number("提示距离(px)")
+      .default(QTE_STYLE_DEFAULTS.promptOffset)
+      .range(24, 160)
+      .step(1),
+    promptLetterSpacing: s
+      .number("提示字距(px)")
+      .default(QTE_STYLE_DEFAULTS.promptLetterSpacing)
+      .range(-1, 12)
+      .step(0.1),
+    promptPadding: s
+      .number("提示内边距(px)")
+      .default(QTE_STYLE_DEFAULTS.promptPadding)
+      .range(0, 32)
+      .step(1),
+    promptRadius: s
+      .number("提示圆角(px)")
+      .default(QTE_STYLE_DEFAULTS.promptRadius)
+      .range(0, 32)
+      .step(1),
+    progressFontSize: s
+      .number("进度字号(px)")
+      .default(QTE_STYLE_DEFAULTS.progressFontSize)
+      .range(9, 30)
+      .step(1),
+    progressOffset: s
+      .number("进度距离(px)")
+      .default(QTE_STYLE_DEFAULTS.progressOffset)
+      .range(24, 160)
+      .step(1),
+    flashSize: s
+      .number("闪光尺寸(px)")
+      .default(QTE_STYLE_DEFAULTS.flashSize)
+      .range(80, 480)
+      .step(1),
+    flashIntensity: s
+      .number("闪光强度(%)")
+      .default(QTE_STYLE_DEFAULTS.flashIntensity)
+      .range(0, 100)
+      .step(1),
+    flashDuration: s
+      .number("反馈持续(ms)")
+      .default(QTE_STYLE_DEFAULTS.flashDuration)
+      .range(120, 1200)
+      .step(20),
+    ambientGlow: s
+      .number("环境辉光(px)")
+      .default(QTE_STYLE_DEFAULTS.ambientGlow)
+      .range(0, 140)
+      .step(1),
+    sparkCount: s
+      .number("光点数量")
+      .default(QTE_STYLE_DEFAULTS.sparkCount)
+      .range(0, 24)
+      .step(1),
+    motionSpeed: s
+      .number("动效速度")
+      .default(QTE_STYLE_DEFAULTS.motionSpeed)
+      .range(0.25, 3)
+      .step(0.05),
   }));
 
   /**

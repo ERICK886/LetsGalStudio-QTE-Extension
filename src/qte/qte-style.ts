@@ -1,440 +1,319 @@
 /**
- * 文件名：qte-style.ts
- * 作者：池水三两升
- * 日期：2026-08-06
- * 版本：1.0.1
- * 描述：QTE 视觉样式默认值与从项目设置解析运行时样式
+ * QTE visual style contract shared by the runtime and the Studio style lab.
  *
- * 注意：Extension 模块 id 为 `qte` 时，宿主常把设置键存成 `qte.fieldName`。
- * 解析时必须同时兼容「无前缀」与「uiId.前缀」两种快照形态。
+ * All fields are deliberately flat. LetsGal stores extension settings by key,
+ * so a flat document remains compatible with old projects and can be updated
+ * atomically by the custom editor without a second persistence format.
  */
 
-/**
- * QTE 运行时样式（已合并默认值）。
- */
+export type QteRingShape = "circle" | "rounded-square" | "diamond";
+export type QteRingPattern = "solid" | "dashed" | "segmented";
+export type QteButtonShape = "circle" | "rounded" | "diamond";
+export type QtePromptWeight = "regular" | "semibold" | "bold";
+export type QteProgressMode = "none" | "time" | "percent";
+
 export interface QteResolvedStyle {
-  /** 外环描边颜色 */
+  overlayColor: string;
+  overlayBlur: number;
   outerRingColor: string;
-  /** Perfect 内环 / 高亮颜色 */
+  outerTrackColor: string;
   perfectColor: string;
-  /** 中心按钮背景色 */
+  tickColor: string;
   buttonBgColor: string;
-  /** 中心按钮文字色 */
   buttonTextColor: string;
-  /** Perfect 命中闪光色 */
+  buttonBorderColor: string;
+  buttonAccentColor: string;
+  promptColor: string;
+  promptBgColor: string;
+  progressColor: string;
   flashColor: string;
-  /** 外环基准直径（px） */
+  ringShape: QteRingShape;
+  ringPattern: QteRingPattern;
+  buttonShape: QteButtonShape;
+  promptWeight: QtePromptWeight;
+  progressMode: QteProgressMode;
   ringDiameter: number;
-  /** 环描边粗细（px） */
   ringStroke: number;
-  /** 中心按钮直径（px） */
+  ringGlow: number;
+  ringRotationSpeed: number;
+  tickCount: number;
+  tickLength: number;
   buttonSize: number;
+  buttonBorderWidth: number;
+  buttonFontSize: number;
+  buttonShadow: number;
+  buttonPulse: number;
+  promptFontSize: number;
+  promptOffset: number;
+  promptLetterSpacing: number;
+  promptPadding: number;
+  promptRadius: number;
+  progressFontSize: number;
+  progressOffset: number;
+  flashSize: number;
+  flashIntensity: number;
+  flashDuration: number;
+  ambientGlow: number;
+  sparkCount: number;
+  motionSpeed: number;
 }
 
-/**
- * 样式字段默认值（与扩展 settings schema 的 default 保持一致）。
- */
+/** New fields extend the old eight-field skin without invalidating it. */
 export const QTE_STYLE_DEFAULTS: QteResolvedStyle = {
-  outerRingColor: "#FFFFFFB8",
+  overlayColor: "#05070B5C",
+  overlayBlur: 0,
+  outerRingColor: "#FFFFFFCC",
+  outerTrackColor: "#FFFFFF24",
   perfectColor: "#FFD66B",
-  buttonBgColor: "#1E2838D1",
+  tickColor: "#FFFFFF80",
+  buttonBgColor: "#111827E8",
   buttonTextColor: "#FFFFFF",
+  buttonBorderColor: "#FFFFFF5C",
+  buttonAccentColor: "#FFD66B",
+  promptColor: "#FFFFFF",
+  promptBgColor: "#090B12B8",
+  progressColor: "#FFFFFFB8",
   flashColor: "#FFD66BB3",
+  ringShape: "circle",
+  ringPattern: "solid",
+  buttonShape: "circle",
+  promptWeight: "semibold",
+  progressMode: "time",
   ringDiameter: 320,
   ringStroke: 6,
+  ringGlow: 28,
+  ringRotationSpeed: 0,
+  tickCount: 12,
+  tickLength: 10,
   buttonSize: 88,
+  buttonBorderWidth: 2,
+  buttonFontSize: 32,
+  buttonShadow: 24,
+  buttonPulse: 4,
+  promptFontSize: 18,
+  promptOffset: 58,
+  promptLetterSpacing: 0,
+  promptPadding: 12,
+  promptRadius: 8,
+  progressFontSize: 12,
+  progressOffset: 54,
+  flashSize: 170,
+  flashIntensity: 72,
+  flashDuration: 400,
+  ambientGlow: 46,
+  sparkCount: 8,
+  motionSpeed: 1,
 };
 
-/**
- * 各数值样式字段的可编辑范围（与 settings schema 一致）。
- */
 export const QTE_STYLE_LIMITS = {
-  ringDiameter: { min: 64, max: 600 },
-  ringStroke: { min: 2, max: 20 },
-  buttonSize: { min: 48, max: 200 },
+  overlayBlur: { min: 0, max: 20, step: 1, unit: "px" },
+  ringDiameter: { min: 96, max: 640, step: 1, unit: "px" },
+  ringStroke: { min: 1, max: 24, step: 1, unit: "px" },
+  ringGlow: { min: 0, max: 80, step: 1, unit: "px" },
+  ringRotationSpeed: { min: -180, max: 180, step: 5, unit: "°/s" },
+  tickCount: { min: 0, max: 36, step: 1, unit: "" },
+  tickLength: { min: 2, max: 28, step: 1, unit: "px" },
+  buttonSize: { min: 40, max: 220, step: 1, unit: "px" },
+  buttonBorderWidth: { min: 0, max: 12, step: 1, unit: "px" },
+  buttonFontSize: { min: 12, max: 72, step: 1, unit: "px" },
+  buttonShadow: { min: 0, max: 64, step: 1, unit: "px" },
+  buttonPulse: { min: 0, max: 16, step: 1, unit: "%" },
+  promptFontSize: { min: 10, max: 42, step: 1, unit: "px" },
+  promptOffset: { min: 24, max: 160, step: 1, unit: "px" },
+  promptLetterSpacing: { min: -1, max: 12, step: 0.1, unit: "px" },
+  promptPadding: { min: 0, max: 32, step: 1, unit: "px" },
+  promptRadius: { min: 0, max: 32, step: 1, unit: "px" },
+  progressFontSize: { min: 9, max: 30, step: 1, unit: "px" },
+  progressOffset: { min: 24, max: 160, step: 1, unit: "px" },
+  flashSize: { min: 80, max: 480, step: 1, unit: "px" },
+  flashIntensity: { min: 0, max: 100, step: 1, unit: "%" },
+  flashDuration: { min: 120, max: 1200, step: 20, unit: "ms" },
+  ambientGlow: { min: 0, max: 140, step: 1, unit: "px" },
+  sparkCount: { min: 0, max: 24, step: 1, unit: "" },
+  motionSpeed: { min: 0.25, max: 3, step: 0.05, unit: "×" },
 } as const;
 
-/** QteResolvedStyle 的字段名联合类型，供样式编辑器按字段写入时使用 */
+export const QTE_STYLE_ENUMS = {
+  ringShape: ["circle", "rounded-square", "diamond"],
+  ringPattern: ["solid", "dashed", "segmented"],
+  buttonShape: ["circle", "rounded", "diamond"],
+  promptWeight: ["regular", "semibold", "bold"],
+  progressMode: ["none", "time", "percent"],
+} as const;
+
 export type QteStyleFieldKey = keyof QteResolvedStyle;
+export type QteNumericStyleFieldKey = keyof typeof QTE_STYLE_LIMITS;
+export type QteEnumStyleFieldKey = keyof typeof QTE_STYLE_ENUMS;
+export type QteStyleValue = QteResolvedStyle[QteStyleFieldKey];
 
-/** 模块内 settings 声明所在的 uiId（与 @extension({ id: "qte" }) 一致） */
 export const QTE_SETTINGS_UI_ID = "qte";
+export const QTE_STYLE_FIELDS = Object.keys(QTE_STYLE_DEFAULTS) as QteStyleFieldKey[];
 
-/**
- * 从 settings 快照中按字段名取值，兼容多种键形态。
- *
- * 查找顺序：
- * 1. 裸键 `field`
- * 2. `qte.field`（模块 scope 前缀）
- * 3. 任意以 `.field` 结尾的键
- * 4. 嵌套对象 `snapshot.qte.field`
- *
- * @param snapshot - useSnapshot / snapshot() 结果
- * @param field - schema 字段名，如 `"buttonBgColor"`
- * @returns 找到的原始值；未找到则为 undefined
- */
+const COLOR_FIELDS = new Set<QteStyleFieldKey>([
+  "overlayColor",
+  "outerRingColor",
+  "outerTrackColor",
+  "perfectColor",
+  "tickColor",
+  "buttonBgColor",
+  "buttonTextColor",
+  "buttonBorderColor",
+  "buttonAccentColor",
+  "promptColor",
+  "promptBgColor",
+  "progressColor",
+  "flashColor",
+]);
+
+export function isQteColorField(field: QteStyleFieldKey): boolean {
+  return COLOR_FIELDS.has(field);
+}
+
+export function isQteNumericField(field: QteStyleFieldKey): field is QteNumericStyleFieldKey {
+  return field in QTE_STYLE_LIMITS;
+}
+
+export function isQteEnumField(field: QteStyleFieldKey): field is QteEnumStyleFieldKey {
+  return field in QTE_STYLE_ENUMS;
+}
+
 export function pickSettingValue(
   snapshot: Record<string, unknown> | null | undefined,
   field: string,
 ): unknown {
-  if (!snapshot) {
-    return undefined;
-  }
-
-  if (Object.prototype.hasOwnProperty.call(snapshot, field)) {
-    return snapshot[field];
-  }
+  if (!snapshot) return undefined;
+  if (Object.prototype.hasOwnProperty.call(snapshot, field)) return snapshot[field];
 
   const prefixed = `${QTE_SETTINGS_UI_ID}.${field}`;
-  if (Object.prototype.hasOwnProperty.call(snapshot, prefixed)) {
-    return snapshot[prefixed];
-  }
+  if (Object.prototype.hasOwnProperty.call(snapshot, prefixed)) return snapshot[prefixed];
 
   for (const [key, value] of Object.entries(snapshot)) {
-    if (key.endsWith(`.${field}`)) {
-      return value;
-    }
+    if (key.endsWith(`.${field}`)) return value;
   }
 
   const nested = snapshot[QTE_SETTINGS_UI_ID];
   if (nested && typeof nested === "object" && !Array.isArray(nested)) {
     const bag = nested as Record<string, unknown>;
-    if (Object.prototype.hasOwnProperty.call(bag, field)) {
-      return bag[field];
-    }
+    if (Object.prototype.hasOwnProperty.call(bag, field)) return bag[field];
   }
-
   return undefined;
 }
 
-/**
- * 将未知值解析为可用的 CSS 颜色字符串。
- *
- * 兼容普通字符串，以及 Studio 偶发对象 `{ hex }` / `{ r,g,b,a }`。
- *
- * @param value - 设置或快照中的原始值
- * @param fallback - 回退色
- * @returns 可用的 CSS 颜色字符串
- */
 function asColor(value: unknown, fallback: string): string {
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value.trim();
-  }
-
+  if (typeof value === "string" && value.trim()) return value.trim();
   if (value && typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    if (typeof obj.value === "string" && obj.value.trim().length > 0) {
-      return obj.value.trim();
+    for (const key of ["value", "hex", "color"] as const) {
+      if (typeof obj[key] === "string" && obj[key].trim()) return obj[key].trim();
     }
-    if (typeof obj.hex === "string" && obj.hex.trim().length > 0) {
-      return obj.hex.trim();
-    }
-    if (typeof obj.color === "string" && obj.color.trim().length > 0) {
-      return obj.color.trim();
-    }
-    if (
-      typeof obj.r === "number" &&
-      typeof obj.g === "number" &&
-      typeof obj.b === "number"
-    ) {
-      const a = typeof obj.a === "number" ? obj.a : 1;
-      return `rgba(${Math.round(obj.r)}, ${Math.round(obj.g)}, ${Math.round(obj.b)}, ${a})`;
+    if (typeof obj.r === "number" && typeof obj.g === "number" && typeof obj.b === "number") {
+      const alpha = typeof obj.a === "number" ? obj.a : 1;
+      return `rgba(${Math.round(obj.r)}, ${Math.round(obj.g)}, ${Math.round(obj.b)}, ${alpha})`;
     }
   }
-
   return fallback;
 }
 
-/**
- * 将未知值解析为落在 [min, max] 内的有限数字。
- *
- * @param value - 原始值
- * @param fallback - 回退值
- * @param min - 最小值
- * @param max - 最大值
- * @returns 裁剪后的数字
- */
-function asClampedNumber(
+function asClampedNumber(value: unknown, fallback: number, min: number, max: number): number {
+  let raw = value;
+  if (raw && typeof raw === "object" && "value" in raw) raw = (raw as { value: unknown }).value;
+  const parsed = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function asEnum<K extends QteEnumStyleFieldKey>(field: K, value: unknown): QteResolvedStyle[K] {
+  const choices = QTE_STYLE_ENUMS[field] as readonly string[];
+  const raw = typeof value === "string" ? value : "";
+  return (choices.includes(raw) ? raw : QTE_STYLE_DEFAULTS[field]) as QteResolvedStyle[K];
+}
+
+export function normalizeQteStyleField<K extends QteStyleFieldKey>(
+  field: K,
   value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  let raw: unknown = value;
-  if (raw && typeof raw === "object" && "value" in (raw as object)) {
-    raw = (raw as { value: unknown }).value;
+): QteResolvedStyle[K] {
+  if (isQteColorField(field)) {
+    return asColor(value, QTE_STYLE_DEFAULTS[field] as string) as QteResolvedStyle[K];
   }
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) {
-    return fallback;
-  }
-  return Math.min(max, Math.max(min, n));
-}
-
-/** 颜色类样式字段键（与 `QTE_COLOR_FIELDS` 集合保持一致） */
-type QteColorStyleFieldKey =
-  | "outerRingColor"
-  | "perfectColor"
-  | "buttonBgColor"
-  | "buttonTextColor"
-  | "flashColor";
-
-/** 数值类样式字段键（与 `QTE_STYLE_LIMITS` 键一致） */
-type QteNumericStyleFieldKey = keyof typeof QTE_STYLE_LIMITS;
-
-/** 颜色类样式字段集合，用于 normalizeQteStyleField 分支判断 */
-const QTE_COLOR_FIELDS: ReadonlySet<QteColorStyleFieldKey> = new Set<QteColorStyleFieldKey>([
-  "outerRingColor",
-  "perfectColor",
-  "buttonBgColor",
-  "buttonTextColor",
-  "flashColor",
-]);
-
-/**
- * 判断样式字段是否为颜色字段。
- *
- * 类型守卫：返回 true 时把 `field` 窄化为 `QteColorStyleFieldKey`，
- * 使后续 `QTE_STYLE_DEFAULTS[field]` 被识别为 `string`，避免 TS2345。
- *
- * @param field - 样式字段键
- * @returns 若为颜色字段则窄化为 `QteColorStyleFieldKey`
- */
-function isColorStyleField(
-  field: QteStyleFieldKey,
-): field is QteColorStyleFieldKey {
-  return QTE_COLOR_FIELDS.has(field as QteColorStyleFieldKey);
-}
-
-/**
- * 判断样式字段是否为数值字段（在 `QTE_STYLE_LIMITS` 中有 min/max）。
- *
- * 类型守卫：返回 true 时把 `field` 窄化为 `QteNumericStyleFieldKey`，
- * 使后续 `QTE_STYLE_DEFAULTS[field]` 被识别为 `number`，避免 TS2345。
- *
- * @param field - 样式字段键
- * @returns 若为数值字段则窄化为 `QteNumericStyleFieldKey`
- */
-function isNumericStyleField(
-  field: QteStyleFieldKey,
-): field is QteNumericStyleFieldKey {
-  return field in QTE_STYLE_LIMITS;
-}
-
-/**
- * 将单个样式字段的原始输入规范化为可写入 settings 的值。
- *
- * - 颜色字段：非法或空值回退为该字段在 QTE_STYLE_DEFAULTS 中的默认值
- * - 数值字段：经 asClampedNumber 裁剪到 QTE_STYLE_LIMITS 对应 min/max
- *
- * @param field - 样式字段名，如 `"ringDiameter"`、`"outerRingColor"`
- * @param value - 编辑器或快照中的原始值（字符串、数字或宿主对象）
- * @returns 规范化后的 string（颜色）或 number（尺寸）
- *
- * @example
- * normalizeQteStyleField("ringDiameter", 10);       // 64（下限）
- * normalizeQteStyleField("outerRingColor", "");     // QTE_STYLE_DEFAULTS.outerRingColor
- */
-export function normalizeQteStyleField(
-  field: QteStyleFieldKey,
-  value: unknown,
-): string | number {
-  if (isColorStyleField(field)) {
-    return asColor(value, QTE_STYLE_DEFAULTS[field]);
-  }
-
-  if (isNumericStyleField(field)) {
+  if (isQteNumericField(field)) {
     const limits = QTE_STYLE_LIMITS[field];
     return asClampedNumber(
       value,
-      QTE_STYLE_DEFAULTS[field],
+      QTE_STYLE_DEFAULTS[field] as number,
       limits.min,
       limits.max,
-    );
+    ) as QteResolvedStyle[K];
   }
-
-  // 理论不可达：QteStyleFieldKey 仅含颜色与数值两类字段。
-  // 兜底返回原值，避免未来新增字段时静默吞错。
-  return value as string | number;
+  if (isQteEnumField(field)) return asEnum(field, value) as QteResolvedStyle[K];
+  return QTE_STYLE_DEFAULTS[field];
 }
 
-/**
- * 从扩展 settings 快照解析完整样式。
- *
- * @param snapshot - `ctx.settings.snapshot()` 或 `useSnapshot()` 的结果
- * @returns 合并默认值后的运行时样式
- */
 export function resolveQteStyle(
   snapshot: Record<string, unknown> | null | undefined,
 ): QteResolvedStyle {
-  return {
-    outerRingColor: asColor(
-      pickSettingValue(snapshot, "outerRingColor"),
-      QTE_STYLE_DEFAULTS.outerRingColor,
-    ),
-    perfectColor: asColor(
-      pickSettingValue(snapshot, "perfectColor"),
-      QTE_STYLE_DEFAULTS.perfectColor,
-    ),
-    buttonBgColor: asColor(
-      pickSettingValue(snapshot, "buttonBgColor"),
-      QTE_STYLE_DEFAULTS.buttonBgColor,
-    ),
-    buttonTextColor: asColor(
-      pickSettingValue(snapshot, "buttonTextColor"),
-      QTE_STYLE_DEFAULTS.buttonTextColor,
-    ),
-    flashColor: asColor(
-      pickSettingValue(snapshot, "flashColor"),
-      QTE_STYLE_DEFAULTS.flashColor,
-    ),
-    ringDiameter: asClampedNumber(
-      pickSettingValue(snapshot, "ringDiameter"),
-      QTE_STYLE_DEFAULTS.ringDiameter,
-      QTE_STYLE_LIMITS.ringDiameter.min,
-      QTE_STYLE_LIMITS.ringDiameter.max,
-    ),
-    ringStroke: asClampedNumber(
-      pickSettingValue(snapshot, "ringStroke"),
-      QTE_STYLE_DEFAULTS.ringStroke,
-      QTE_STYLE_LIMITS.ringStroke.min,
-      QTE_STYLE_LIMITS.ringStroke.max,
-    ),
-    buttonSize: asClampedNumber(
-      pickSettingValue(snapshot, "buttonSize"),
-      QTE_STYLE_DEFAULTS.buttonSize,
-      QTE_STYLE_LIMITS.buttonSize.min,
-      QTE_STYLE_LIMITS.buttonSize.max,
-    ),
-  };
+  const resolved = {} as QteResolvedStyle;
+  for (const field of QTE_STYLE_FIELDS) {
+    (resolved as Record<QteStyleFieldKey, QteStyleValue>)[field] = normalizeQteStyleField(
+      field,
+      pickSettingValue(snapshot, field),
+    );
+  }
+  return resolved;
 }
 
-/**
- * 从 ExtensionContext 读取并解析 QTE 样式。
- *
- * 同时尝试多种键形态与 API，避免宿主把设置存成裸键 / `qte.xxx` 时读不到：
- * - snapshot + pickSettingValue
- * - settings.get("field")（scoped 时会自动加 uiId 前缀）
- * - settings.get("qte.field")（显式完整路径，跳过再补前缀）
- * - settings.cross.get("qte", "field")
- *
- * @param ctx - 扩展上下文
- * @returns 合并默认值后的运行时样式
- */
 export function readQteStyleFromContext(ctx: {
   settings: {
     snapshot(): Record<string, unknown>;
     get<T = unknown>(key: string): T | undefined;
-    cross: {
-      get<T = unknown>(uiId: string, key: string): T | undefined;
-    };
+    cross: { get<T = unknown>(uiId: string, key: string): T | undefined };
   };
 }): QteResolvedStyle {
-  const snap = ctx.settings.snapshot() ?? {};
-  const merged: Record<string, unknown> = { ...snap };
+  const snapshot = ctx.settings.snapshot() ?? {};
+  const merged: Record<string, unknown> = { ...snapshot };
 
-  const fields = [
-    "outerRingColor",
-    "perfectColor",
-    "buttonBgColor",
-    "buttonTextColor",
-    "flashColor",
-    "ringDiameter",
-    "ringStroke",
-    "buttonSize",
-  ] as const;
-
-  for (const field of fields) {
-    if (pickSettingValue(merged, field) !== undefined) {
+  for (const field of QTE_STYLE_FIELDS) {
+    if (pickSettingValue(merged, field) !== undefined) continue;
+    const scoped = ctx.settings.get(field);
+    if (scoped !== undefined) {
+      merged[field] = scoped;
       continue;
     }
-
-    const fromGet = ctx.settings.get(field);
-    if (fromGet !== undefined) {
-      merged[field] = fromGet;
+    const prefixed = ctx.settings.get(`${QTE_SETTINGS_UI_ID}.${field}`);
+    if (prefixed !== undefined) {
+      merged[field] = prefixed;
       continue;
     }
-
-    const fromPrefixed = ctx.settings.get(`${QTE_SETTINGS_UI_ID}.${field}`);
-    if (fromPrefixed !== undefined) {
-      merged[field] = fromPrefixed;
-      continue;
-    }
-
     try {
-      const fromCross = ctx.settings.cross.get(QTE_SETTINGS_UI_ID, field);
-      if (fromCross !== undefined) {
-        merged[field] = fromCross;
-      }
+      const cross = ctx.settings.cross.get(QTE_SETTINGS_UI_ID, field);
+      if (cross !== undefined) merged[field] = cross;
     } catch {
-      // cross 在部分宿主上可能不可用，忽略
+      // Older hosts can omit cross-setting access. Defaults keep the UI usable.
     }
   }
-
   return resolveQteStyle(merged);
 }
 
-
-/**
- * 将 0–100 的百分比坐标裁剪到合法区间。
- *
- * @param value - 原始百分比
- * @param fallback - 非法时的回退（默认 50）
- * @returns [0, 100] 内的数字
- */
 export function clampPercent(value: unknown, fallback = 50): number {
   return asClampedNumber(value, fallback, 0, 100);
 }
 
-/**
- * 根据主色生成略透明的「暗淡」边框色（Perfect 窗外态）。
- *
- * @param color - 主色
- * @returns 带透明度的颜色或原色
- */
 export function dimColor(color: string): string {
-  const hex = color.trim();
-  const m = /^#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$/.exec(hex);
-  if (!m) {
-    return color;
-  }
-  return `#${m[1]}73`;
+  const match = /^#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$/.exec(color.trim());
+  return match ? `#${match[1]}73` : color;
 }
 
-/**
- * 根据主色生成外发光 box-shadow。
- *
- * @param color - 主色
- * @param strong - 是否高亮（Perfect 窗内）
- * @returns CSS box-shadow 字符串
- */
-export function glowShadow(color: string, strong: boolean): string {
-  const alpha = strong ? 0.55 : 0.22;
-  const blur = strong ? 16 : 8;
-  return `0 0 ${blur}px rgba(0, 0, 0, 0), 0 0 ${blur}px ${colorToRgba(color, alpha)}`;
+export function glowShadow(color: string, strong: boolean, blur = strong ? 16 : 8): string {
+  return `0 0 ${blur}px ${colorToRgba(color, strong ? 0.58 : 0.24)}`;
 }
 
-/**
- * 将 #RGB / #RRGGBB / #RRGGBBAA 转为 rgba()。
- *
- * @param color - 十六进制颜色
- * @param alpha - 覆盖透明度 0–1
- * @returns rgba 字符串；无法解析时返回原色
- */
 export function colorToRgba(color: string, alpha: number): string {
-  const hex = color.trim();
-  const short = /^#([0-9a-fA-F]{3})([0-9a-fA-F])?$/.exec(hex);
+  const value = color.trim();
+  const short = /^#([0-9a-fA-F]{3})([0-9a-fA-F])?$/.exec(value);
   if (short) {
-    const [r, g, b] = short[1]!.split("").map((c) => parseInt(c + c, 16));
+    const [r, g, b] = short[1]!.split("").map((part) => parseInt(part + part, 16));
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
-
-  const m = /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})?$/.exec(hex);
-  if (!m) {
-    return color;
-  }
-  const r = parseInt(m[1]!, 16);
-  const g = parseInt(m[2]!, 16);
-  const b = parseInt(m[3]!, 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const hex = /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})?$/.exec(value);
+  if (!hex) return color;
+  return `rgba(${parseInt(hex[1]!, 16)}, ${parseInt(hex[2]!, 16)}, ${parseInt(hex[3]!, 16)}, ${alpha})`;
 }

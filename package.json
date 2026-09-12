@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node scripts/verify-bundle.mjs",
     "watch": "vite build --watch",
     "test:logic": "npx --yes tsx --test src/qte/key-utils.test.ts src/qte/qte-logic.test.ts src/qte/qte-style.test.ts src/qte-editor/demo-snapshot.test.ts"
   },
